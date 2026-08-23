@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: products
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/products
+    username: products_user
+    password: products_password
+    driver-class-name: org.postgresql.Driver
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+logging:
+  level:
+    root: INFO
+    com.mango: DEBUG
+    org.springframework.jdbc.core: DEBUG # Useful to see the SQL being executed

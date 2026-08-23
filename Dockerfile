@@ -1,9 +1,13 @@
-FROM gradle:8.5.0-jdk21 AS build
-COPY --chown=gradle:gradle . /home/gradle/project
-WORKDIR /home/gradle/project
-RUN gradle clean build
-
-FROM eclipse-temurin:21-jdk
+# Multi-stage build compiling GraalVM Native Image
+FROM ghcr.io/graalvm/native-image-community:25 AS build
 WORKDIR /app
-COPY --from=build /home/gradle/project/build/libs/*.jar app.jar
-ENTRYPOINT ["java", "-jar", "app.jar"]
+RUN microdnf install -y findutils && microdnf clean all
+COPY . .
+RUN chmod +x gradlew
+RUN ./gradlew nativeCompile --no-daemon -x test -x integrationTest
+
+FROM ubuntu:22.04
+WORKDIR /app
+COPY --from=build /app/build/native/nativeCompile/app /app/app
+EXPOSE 8080
+ENTRYPOINT ["/app/app"]

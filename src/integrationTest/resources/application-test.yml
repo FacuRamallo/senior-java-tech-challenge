@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: products-test
+
+logging:
+  level:
+    root: INFO
+    com.mango: DEBUG
+    org.springframework.jdbc.core: DEBUG
