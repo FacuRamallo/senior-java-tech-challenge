@@ -1,0 +1,108 @@
+openapi: 3.1.0
+info:
+  title: Products & Prices Management API
+  description: High-performance Hexagonal API for Product Management and Dynamic Price Resolution.
+  version: 1.0.0
+  contact:
+    name: Mango Engineering
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+paths:
+  /products:
+    post:
+      summary: Create a new product
+      description: Registers a new product using a client-generated UUIDv7 identifier for CQRS/idempotency support.
+      operationId: createProduct
+      tags:
+        - Products
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+            example:
+              id: "01952e42-7a57-7000-8000-000000000001"
+              name: "Zapatillas deportivas"
+              description: "Modelo 2025 edición limitada"
+      responses:
+        '201':
+          description: Product successfully created.
+          headers:
+            Location:
+              description: URI path to the created product resource.
+              schema:
+                type: string
+                example: "/products/01952e42-7a57-7000-8000-000000000001"
+        '400':
+          description: Invalid request payload or domain invariant violation (e.g. non-UUIDv7 ID, blank name/description).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+              example:
+                type: "about:blank"
+                title: "Invalid Request"
+                status: 400
+                detail: "Name cannot be blank"
+                instance: "/products"
+
+components:
+  schemas:
+    CreateProductRequest:
+      type: object
+      required:
+        - id
+        - name
+        - description
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Client-generated UUIDv7.
+          example: "01952e42-7a57-7000-8000-000000000001"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Non-blank product name.
+          example: "Zapatillas deportivas"
+        description:
+          type: string
+          minLength: 1
+          description: Non-blank product description.
+          example: "Modelo 2025 edición limitada"
+
+    ProblemDetail:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - detail
+      properties:
+        type:
+          type: string
+          format: uri
+          description: Problem type URI identifier.
+          example: "about:blank"
+        title:
+          type: string
+          description: Short human-readable summary of the problem.
+          example: "Invalid Request"
+        status:
+          type: integer
+          description: HTTP status code.
+          example: 400
+        detail:
+          type: string
+          description: Specific domain explanation of the error.
+          example: "Name cannot be blank"
+        instance:
+          type: string
+          format: uri-reference
+          description: URI of the resource where the error occurred.
+          example: "/products"

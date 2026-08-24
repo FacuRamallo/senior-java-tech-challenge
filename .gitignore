@@ -33,3 +33,7 @@ Thumbs.db
 
 # Docker compose runtime state
 .docker/
+
+# AI Agent Context
+.agents/
+AGENTS.md

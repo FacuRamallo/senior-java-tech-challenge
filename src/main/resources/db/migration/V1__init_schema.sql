@@ -1,2 +1,0 @@
--- Initial Flyway baseline
--- Tables, schemas, and indexes will be created in feature development steps.

@@ -1,5 +1,6 @@
 package com.mango.products;
 
+import com.mango.products.acceptance.prices.CreateProductFeature;
 import com.mango.products.infrastructure.helper.DockerComposeHelper;
 import org.junit.jupiter.api.Nested;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,5 +28,8 @@ public class IntegrationTestSuite {
   }
 
   @Nested
-  class HealthBenchmark extends HealthBenchmarkTests {}
+  class Application extends ApplicationTests {}
+
+  @Nested
+  class CreateProduct extends CreateProductFeature {}
 }

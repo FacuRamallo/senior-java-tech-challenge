@@ -51,7 +51,6 @@ val integrationTestRuntimeOnly: Configuration by configurations.getting {
 }
 
 dependencies {
-    // Production dependencies
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
@@ -60,10 +59,8 @@ dependencies {
     implementation("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
     
-    // UUIDv7 Generator
     implementation("com.fasterxml.uuid:java-uuid-generator:5.1.0")
 
-    // Test dependencies (unit tests & integration tests)
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter:2.0.5")
@@ -73,11 +70,29 @@ dependencies {
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+    jvmArgs("-XX:+EnableDynamicAgentLoading")
     environment("TESTCONTAINERS_RYUK_DISABLED", "true")
     testLogging {
         events("passed", "skipped", "failed")
-        showStandardStreams = true
+        showExceptions = true
+        showCauses = true
+        showStackTraces = true
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
+}
+
+tasks.check {
+    dependsOn(tasks.named("integrationTest"))
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+val isNativeBuild = gradle.startParameter.taskNames.any { it.contains("native", ignoreCase = true) }
+
+tasks.named("processAot") {
+    enabled = isNativeBuild
+}
+tasks.named("processTestAot") {
+    enabled = isNativeBuild
 }
 
 spotless {
@@ -89,9 +104,15 @@ spotless {
 
 tasks.jacocoTestReport {
     dependsOn(tasks.test, tasks.named("integrationTest"))
+    executionData.setFrom(fileTree(layout.buildDirectory).include("jacoco/*.exec"))
     reports {
         xml.required.set(true)
         html.required.set(true)
+        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/html"))
+    }
+    doLast {
+        val reportFile = layout.buildDirectory.file("reports/jacoco/html/index.html").get().asFile
+        println("JaCoCo Report: file://${reportFile.absolutePath}")
     }
 }
 

@@ -8,10 +8,10 @@
         </encoder>
     </appender>
 
-    <root level="INFO">
+    <root level="ERROR">
         <appender-ref ref="CONSOLE"/>
     </root>
 
-    <logger name="com.mango" level="DEBUG" />
-    <logger name="org.springframework.jdbc.core" level="DEBUG" />
+    <logger name="com.mango" level="ERROR" />
+    <logger name="org.springframework.jdbc.core" level="ERROR" />
 </configuration>

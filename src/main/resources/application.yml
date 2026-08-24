@@ -10,10 +10,3 @@ spring:
 
   flyway:
     enabled: true
-    baseline-on-migrate: true
-
-logging:
-  level:
-    root: INFO
-    com.mango: DEBUG
-    org.springframework.jdbc.core: DEBUG # Useful to see the SQL being executed
