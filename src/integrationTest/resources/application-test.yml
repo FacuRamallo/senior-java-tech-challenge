@@ -1,3 +1,12 @@
 spring:
   application:
     name: products-test
+
+logging:
+  level:
+    root: ERROR
+    com.mango: ERROR
+    org.springframework.jdbc.core: ERROR
+    org.testcontainers: WARN
+    tc: WARN
+    com.github.dockerjava: WARN
