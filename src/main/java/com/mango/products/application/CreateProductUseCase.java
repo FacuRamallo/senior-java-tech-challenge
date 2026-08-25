@@ -13,11 +13,12 @@ public class CreateProductUseCase {
     this.productRepository = productRepository;
   }
 
-  public void execute(CreateProductCommand command) {
-    var id = Id.fromString(command.id());
+  public Product execute(CreateProductCommand command) {
+    var id = Id.fromStringOrGenerate(command.id());
     var name = new Name(command.name());
     var description = new Description(command.description());
     var product = Product.create(id, name, description);
     productRepository.save(product);
+    return product;
   }
 }

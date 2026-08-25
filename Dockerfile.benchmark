@@ -1,5 +1,5 @@
 FROM alpine:3.19
 WORKDIR /app
-RUN apk add --no-cache curl jq
+RUN apk add --no-cache curl jq bash bc
 COPY benchmark.sh benchmark.sh
 RUN chmod +x benchmark.sh

@@ -15,6 +15,10 @@ public class Product {
     return new Product(id, name, description);
   }
 
+  public static Product create(Name name, Description description) {
+    return new Product(Id.generate(), name, description);
+  }
+
   public Id getId() {
     return id;
   }

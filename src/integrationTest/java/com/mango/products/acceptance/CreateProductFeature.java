@@ -24,10 +24,20 @@ public abstract class CreateProductFeature extends IntegrationTestBase {
         """
             .formatted(id);
 
+    String expectedResponseBody =
+        """
+        {
+          "id": "%s",
+          "name": "Zapatillas deportivas",
+          "description": "Modelo 2025 edición limitada"
+        }
+        """
+            .formatted(id);
+
     mockMvc
         .perform(post("/products").contentType(MediaType.APPLICATION_JSON).content(requestBody))
         .andExpect(status().isCreated())
         .andExpect(header().string("Location", "/products/" + id))
-        .andExpect(content().string(""));
+        .andExpect(content().json(expectedResponseBody));
   }
 }

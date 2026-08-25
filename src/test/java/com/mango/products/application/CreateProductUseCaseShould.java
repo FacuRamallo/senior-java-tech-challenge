@@ -30,7 +30,6 @@ class CreateProductUseCaseShould {
   private static final String DESCRIPTION = "Modelo 2025 edición limitada";
 
   private static final String ERROR_UUID_V7 = "Id must be a valid UUIDv7";
-  private static final String ERROR_ID_BLANK = "Id must not be blank";
   private static final String ERROR_NAME_BLANK = "Name cannot be blank";
   private static final String ERROR_DESCRIPTION_BLANK = "Description cannot be blank";
 
@@ -45,10 +44,10 @@ class CreateProductUseCaseShould {
   }
 
   @Test
-  void createAndPersistProduct() {
+  void createAndPersistProductWithExplicitId() {
     var command = new CreateProductCommand(PRODUCT_ID, NAME, DESCRIPTION);
 
-    useCase.execute(command);
+    Product result = useCase.execute(command);
 
     verify(productRepository).save(productCaptor.capture());
     Product savedProduct = productCaptor.getValue();
@@ -56,6 +55,25 @@ class CreateProductUseCaseShould {
     var expectedProduct =
         Product.create(Id.fromString(PRODUCT_ID), new Name(NAME), new Description(DESCRIPTION));
     assertThat(savedProduct).usingRecursiveComparison().isEqualTo(expectedProduct);
+    assertThat(result).usingRecursiveComparison().isEqualTo(expectedProduct);
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"   "})
+  void createAndPersistProductWithGeneratedIdWhenOmittedOrBlank(String rawId) {
+    var command = aCommandWithId(rawId);
+
+    Product result = useCase.execute(command);
+
+    verify(productRepository).save(productCaptor.capture());
+    Product savedProduct = productCaptor.getValue();
+
+    assertThat(savedProduct.getId()).isNotNull();
+    assertThat(savedProduct.getId().value().version()).isEqualTo(7);
+    assertThat(savedProduct.getName().value()).isEqualTo(NAME);
+    assertThat(savedProduct.getDescription().value()).isEqualTo(DESCRIPTION);
+    assertThat(result).usingRecursiveComparison().isEqualTo(savedProduct);
   }
 
   @Test
@@ -65,19 +83,6 @@ class CreateProductUseCaseShould {
     assertThatThrownBy(() -> useCase.execute(command))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(ERROR_UUID_V7);
-
-    verifyNoInteractions(productRepository);
-  }
-
-  @ParameterizedTest
-  @NullAndEmptySource
-  @ValueSource(strings = {"   "})
-  void failWhenIdIsBlankOrNull(String invalidId) {
-    var command = aCommandWithId(invalidId);
-
-    assertThatThrownBy(() -> useCase.execute(command))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage(ERROR_ID_BLANK);
 
     verifyNoInteractions(productRepository);
   }
