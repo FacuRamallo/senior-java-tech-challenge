@@ -4,9 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import com.mango.products.domain.Description;
 import com.mango.products.domain.Id;
+import com.mango.products.domain.IdGenerator;
 import com.mango.products.domain.Name;
 import com.mango.products.domain.Product;
 import com.mango.products.domain.ProductRepository;
@@ -34,13 +36,14 @@ class CreateProductUseCaseShould {
   private static final String ERROR_DESCRIPTION_BLANK = "Description cannot be blank";
 
   @Mock private ProductRepository productRepository;
+  @Mock private IdGenerator idGenerator;
   @Captor private ArgumentCaptor<Product> productCaptor;
 
   private CreateProductUseCase useCase;
 
   @BeforeEach
   void setUp() {
-    useCase = new CreateProductUseCase(productRepository);
+    useCase = new CreateProductUseCase(productRepository, idGenerator);
   }
 
   @Test
@@ -56,24 +59,27 @@ class CreateProductUseCaseShould {
         Product.create(Id.fromString(PRODUCT_ID), new Name(NAME), new Description(DESCRIPTION));
     assertThat(savedProduct).usingRecursiveComparison().isEqualTo(expectedProduct);
     assertThat(result).usingRecursiveComparison().isEqualTo(expectedProduct);
+    verifyNoInteractions(idGenerator);
   }
 
   @ParameterizedTest
   @NullAndEmptySource
   @ValueSource(strings = {"   "})
   void createAndPersistProductWithGeneratedIdWhenOmittedOrBlank(String rawId) {
+    var generatedId = Id.fromString(PRODUCT_ID);
+    when(idGenerator.nextIdentity()).thenReturn(generatedId);
+
     var command = aCommandWithId(rawId);
 
     Product result = useCase.execute(command);
 
+    verify(idGenerator).nextIdentity();
     verify(productRepository).save(productCaptor.capture());
     Product savedProduct = productCaptor.getValue();
 
-    assertThat(savedProduct.getId()).isNotNull();
-    assertThat(savedProduct.getId().value().version()).isEqualTo(7);
-    assertThat(savedProduct.getName().value()).isEqualTo(NAME);
-    assertThat(savedProduct.getDescription().value()).isEqualTo(DESCRIPTION);
-    assertThat(result).usingRecursiveComparison().isEqualTo(savedProduct);
+    var expectedProduct = Product.create(generatedId, new Name(NAME), new Description(DESCRIPTION));
+    assertThat(savedProduct).usingRecursiveComparison().isEqualTo(expectedProduct);
+    assertThat(result).usingRecursiveComparison().isEqualTo(expectedProduct);
   }
 
   @Test
@@ -85,6 +91,7 @@ class CreateProductUseCaseShould {
         .hasMessage(ERROR_UUID_V7);
 
     verifyNoInteractions(productRepository);
+    verifyNoInteractions(idGenerator);
   }
 
   @ParameterizedTest
@@ -98,6 +105,7 @@ class CreateProductUseCaseShould {
         .hasMessage(ERROR_NAME_BLANK);
 
     verifyNoInteractions(productRepository);
+    verifyNoInteractions(idGenerator);
   }
 
   @ParameterizedTest
@@ -111,6 +119,7 @@ class CreateProductUseCaseShould {
         .hasMessage(ERROR_DESCRIPTION_BLANK);
 
     verifyNoInteractions(productRepository);
+    verifyNoInteractions(idGenerator);
   }
 
   private static CreateProductCommand aCommandWithId(String id) {

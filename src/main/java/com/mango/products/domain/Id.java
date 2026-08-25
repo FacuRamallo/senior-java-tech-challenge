@@ -1,6 +1,5 @@
 package com.mango.products.domain;
 
-import com.fasterxml.uuid.Generators;
 import java.util.UUID;
 
 public record Id(UUID value) {
@@ -11,20 +10,9 @@ public record Id(UUID value) {
     validateVersion(value);
   }
 
-  public static Id generate() {
-    return new Id(Generators.timeBasedEpochGenerator().generate());
-  }
-
   public static Id fromString(String raw) {
     validateNotBlank(raw);
     return new Id(parseUuid(raw));
-  }
-
-  public static Id fromStringOrGenerate(String raw) {
-    if (raw == null || raw.isBlank()) {
-      return generate();
-    }
-    return fromString(raw);
   }
 
   private static void validateNotBlank(String value) {

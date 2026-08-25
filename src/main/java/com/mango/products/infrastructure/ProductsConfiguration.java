@@ -4,6 +4,7 @@ import com.mango.products.application.AddPriceToProductUseCase;
 import com.mango.products.application.CreateProductUseCase;
 import com.mango.products.application.GetActivePriceUseCase;
 import com.mango.products.application.GetPriceHistoryUseCase;
+import com.mango.products.domain.IdGenerator;
 import com.mango.products.domain.PriceRepository;
 import com.mango.products.domain.ProductRepository;
 import java.time.Clock;
@@ -29,8 +30,9 @@ public class ProductsConfiguration {
   }
 
   @Bean
-  public CreateProductUseCase createProductUseCase(ProductRepository productRepository) {
-    return new CreateProductUseCase(productRepository);
+  public CreateProductUseCase createProductUseCase(
+      ProductRepository productRepository, IdGenerator idGenerator) {
+    return new CreateProductUseCase(productRepository, idGenerator);
   }
 
   @Bean
