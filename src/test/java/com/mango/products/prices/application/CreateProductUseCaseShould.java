@@ -25,8 +25,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class CreateProductUseCaseShould {
 
   private static final String PRODUCT_ID = "01952e42-7a57-7000-8000-000000000001";
+  private static final String INVALID_UUID = "c9bf9e57-1685-4c89-bafb-ff5af830be8a";
   private static final String NAME = "Zapatillas deportivas";
   private static final String DESCRIPTION = "Modelo 2025 edición limitada";
+
+  private static final String ERROR_UUID_V7 = "Id must be a valid UUIDv7";
+  private static final String ERROR_ID_BLANK = "Id must not be blank";
+  private static final String ERROR_NAME_BLANK = "Name cannot be blank";
+  private static final String ERROR_DESCRIPTION_BLANK = "Description cannot be blank";
 
   @Mock private ProductRepository productRepository;
   @Captor private ArgumentCaptor<Product> productCaptor;
@@ -54,12 +60,11 @@ class CreateProductUseCaseShould {
 
   @Test
   void failWhenIdIsNotUuidV7() {
-    var invalidId = "c9bf9e57-1685-4c89-bafb-ff5af830be8a";
-    var command = new CreateProductCommand(invalidId, NAME, DESCRIPTION);
+    var command = aCommandWithId(INVALID_UUID);
 
     assertThatThrownBy(() -> useCase.execute(command))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Id must be a valid UUIDv7");
+        .hasMessage(ERROR_UUID_V7);
 
     verifyNoInteractions(productRepository);
   }
@@ -68,11 +73,11 @@ class CreateProductUseCaseShould {
   @NullAndEmptySource
   @ValueSource(strings = {"   "})
   void failWhenIdIsBlankOrNull(String invalidId) {
-    var command = new CreateProductCommand(invalidId, NAME, DESCRIPTION);
+    var command = aCommandWithId(invalidId);
 
     assertThatThrownBy(() -> useCase.execute(command))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Id must not be blank");
+        .hasMessage(ERROR_ID_BLANK);
 
     verifyNoInteractions(productRepository);
   }
@@ -81,11 +86,11 @@ class CreateProductUseCaseShould {
   @NullAndEmptySource
   @ValueSource(strings = {"   "})
   void failWhenNameIsBlankOrNull(String invalidName) {
-    var command = new CreateProductCommand(PRODUCT_ID, invalidName, DESCRIPTION);
+    var command = aCommandWithName(invalidName);
 
     assertThatThrownBy(() -> useCase.execute(command))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Name cannot be blank");
+        .hasMessage(ERROR_NAME_BLANK);
 
     verifyNoInteractions(productRepository);
   }
@@ -94,12 +99,24 @@ class CreateProductUseCaseShould {
   @NullAndEmptySource
   @ValueSource(strings = {"   "})
   void failWhenDescriptionIsBlankOrNull(String invalidDescription) {
-    var command = new CreateProductCommand(PRODUCT_ID, NAME, invalidDescription);
+    var command = aCommandWithDescription(invalidDescription);
 
     assertThatThrownBy(() -> useCase.execute(command))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Description cannot be blank");
+        .hasMessage(ERROR_DESCRIPTION_BLANK);
 
     verifyNoInteractions(productRepository);
+  }
+
+  private static CreateProductCommand aCommandWithId(String id) {
+    return new CreateProductCommand(id, NAME, DESCRIPTION);
+  }
+
+  private static CreateProductCommand aCommandWithName(String name) {
+    return new CreateProductCommand(PRODUCT_ID, name, DESCRIPTION);
+  }
+
+  private static CreateProductCommand aCommandWithDescription(String description) {
+    return new CreateProductCommand(PRODUCT_ID, NAME, description);
   }
 }

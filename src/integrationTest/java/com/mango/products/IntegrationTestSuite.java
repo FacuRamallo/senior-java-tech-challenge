@@ -1,5 +1,6 @@
 package com.mango.products;
 
+import com.mango.products.acceptance.prices.AddPriceFeature;
 import com.mango.products.acceptance.prices.CreateProductFeature;
 import com.mango.products.infrastructure.helper.DockerComposeHelper;
 import org.junit.jupiter.api.Nested;
@@ -32,4 +33,7 @@ public class IntegrationTestSuite {
 
   @Nested
   class CreateProduct extends CreateProductFeature {}
+
+  @Nested
+  class AddPrice extends AddPriceFeature {}
 }

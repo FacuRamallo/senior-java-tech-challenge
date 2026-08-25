@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Products & Prices Management API
-  description: High-performance Hexagonal API for Product Management and Dynamic Price Resolution.
+  description: High-performance Hexagonal API for Product Management and Dynamic Multi-Currency Price Resolution.
   version: 1.0.0
   contact:
     name: Mango Engineering
@@ -50,6 +50,67 @@ paths:
                 detail: "Name cannot be blank"
                 instance: "/products"
 
+  /products/{id}/prices:
+    post:
+      summary: Add a price to a product
+      description: Registers a discrete historical price interval for a product. Enforces non-overlapping validity ranges per product and currency.
+      operationId: addPriceToProduct
+      tags:
+        - Prices
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUIDv7 identifier of the product.
+          schema:
+            type: string
+            format: uuid
+          example: "01952e42-7a57-7000-8000-000000000001"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddPriceRequest'
+            example:
+              value: 99.99
+              currency: "EUR"
+              initDate: "2024-01-01"
+              endDate: "2024-06-30"
+      responses:
+        '201':
+          description: Price successfully added to the product.
+          headers:
+            Location:
+              description: URI path to the created price resource.
+              schema:
+                type: string
+                example: "/products/01952e42-7a57-7000-8000-000000000001/prices/01952e42-7a57-7000-8000-000000000002"
+        '400':
+          description: Invalid price payload, negative amount, invalid ISO currency, or initDate >= endDate.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+              example:
+                type: "about:blank"
+                title: "Invalid Request"
+                status: 400
+                detail: "Init date must be before end date"
+                instance: "/products/01952e42-7a57-7000-8000-000000000001/prices"
+        '409':
+          description: Price validity range overlaps with an existing price for this product and currency.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+              example:
+                type: "about:blank"
+                title: "Price Overlap Conflict"
+                status: 409
+                detail: "Price validity period overlaps with an existing price for this product and currency"
+                instance: "/products/01952e42-7a57-7000-8000-000000000001/prices"
+
 components:
   schemas:
     CreateProductRequest:
@@ -75,6 +136,36 @@ components:
           minLength: 1
           description: Non-blank product description.
           example: "Modelo 2025 edición limitada"
+
+    AddPriceRequest:
+      type: object
+      required:
+        - value
+        - initDate
+      properties:
+        value:
+          type: number
+          format: decimal
+          minimum: 0.01
+          description: Positive price amount.
+          example: 99.99
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          description: ISO-4217 currency code (defaults to EUR if omitted).
+          example: "EUR"
+        initDate:
+          type: string
+          format: date
+          description: Start of validity period (inclusive).
+          example: "2024-01-01"
+        endDate:
+          type: string
+          format: date
+          nullable: true
+          description: End of validity period (inclusive), or null for open-ended pricing.
+          example: "2024-06-30"
 
     ProblemDetail:
       type: object
