@@ -52,9 +52,9 @@ paths:
 
   /products/{id}/prices:
     get:
-      summary: Get active price on date
-      description: Resolves the active price for a product on a specific date and currency (defaulting to EUR).
-      operationId: getActivePrice
+      summary: Query product prices
+      description: Resolves either the active price on a specific date (when `date` is provided) or the chronological price history (when `date` is omitted), scoped by currency.
+      operationId: getPrices
       tags:
         - Prices
       parameters:
@@ -68,8 +68,8 @@ paths:
           example: "01952e42-7a57-7000-8000-000000000001"
         - name: date
           in: query
-          required: true
-          description: Query date in ISO-8601 calendar date format (YYYY-MM-DD).
+          required: false
+          description: Optional query date in ISO-8601 format (YYYY-MM-DD). If provided, returns the single active price on that date. If omitted, returns the complete price history.
           schema:
             type: string
             format: date
@@ -85,14 +85,34 @@ paths:
           example: "EUR"
       responses:
         '200':
-          description: Active price found for the given product, date, and currency.
+          description: Price resolution successful (single active price object if date query param provided, or chronological array of price history items).
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetActivePriceResponse'
-              example:
-                value: 99.99
-                currency: "EUR"
+                oneOf:
+                  - $ref: '#/components/schemas/GetActivePriceResponse'
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/PriceHistoryItemResponse'
+              examples:
+                activePrice:
+                  summary: Single active price response (when date param provided)
+                  value:
+                    value: 99.99
+                    currency: "EUR"
+                priceHistory:
+                  summary: Chronological price history response (when date param omitted)
+                  value:
+                    - id: "01952e42-7a57-7000-8000-000000000002"
+                      value: 99.99
+                      currency: "EUR"
+                      initDate: "2024-01-01"
+                      endDate: "2024-06-30"
+                    - id: "01952e42-7a57-7000-8000-000000000003"
+                      value: 149.99
+                      currency: "EUR"
+                      initDate: "2024-07-01"
+                      endDate: "2024-12-31"
         '400':
           description: Invalid product ID, date format, or ISO currency code.
           content:
@@ -241,6 +261,42 @@ components:
           maxLength: 3
           description: ISO-4217 currency code.
           example: "EUR"
+
+    PriceHistoryItemResponse:
+      type: object
+      required:
+        - id
+        - value
+        - currency
+        - initDate
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Price identifier (UUIDv7).
+          example: "01952e42-7a57-7000-8000-000000000002"
+        value:
+          type: number
+          format: decimal
+          description: Price amount.
+          example: 99.99
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          description: ISO-4217 currency code.
+          example: "EUR"
+        initDate:
+          type: string
+          format: date
+          description: Start of validity period (inclusive).
+          example: "2024-01-01"
+        endDate:
+          type: string
+          format: date
+          nullable: true
+          description: End of validity period (inclusive), or null for open-ended pricing.
+          example: "2024-06-30"
 
     ProblemDetail:
       type: object

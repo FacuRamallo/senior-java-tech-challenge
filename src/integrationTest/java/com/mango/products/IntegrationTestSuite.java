@@ -3,6 +3,7 @@ package com.mango.products;
 import com.mango.products.acceptance.prices.AddPriceFeature;
 import com.mango.products.acceptance.prices.CreateProductFeature;
 import com.mango.products.acceptance.prices.GetActivePriceFeature;
+import com.mango.products.acceptance.prices.GetPriceHistoryFeature;
 import com.mango.products.infrastructure.helper.DockerComposeHelper;
 import org.junit.jupiter.api.Nested;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -40,4 +41,7 @@ public class IntegrationTestSuite {
 
   @Nested
   class GetActivePrice extends GetActivePriceFeature {}
+
+  @Nested
+  class GetPriceHistory extends GetPriceHistoryFeature {}
 }
