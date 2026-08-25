@@ -13,6 +13,9 @@ import com.mango.products.prices.domain.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -61,9 +64,24 @@ class CreateProductUseCaseShould {
     verifyNoInteractions(productRepository);
   }
 
-  @Test
-  void failWhenNameIsBlank() {
-    var command = new CreateProductCommand(PRODUCT_ID, "   ", DESCRIPTION);
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"   "})
+  void failWhenIdIsBlankOrNull(String invalidId) {
+    var command = new CreateProductCommand(invalidId, NAME, DESCRIPTION);
+
+    assertThatThrownBy(() -> useCase.execute(command))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Id must not be blank");
+
+    verifyNoInteractions(productRepository);
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"   "})
+  void failWhenNameIsBlankOrNull(String invalidName) {
+    var command = new CreateProductCommand(PRODUCT_ID, invalidName, DESCRIPTION);
 
     assertThatThrownBy(() -> useCase.execute(command))
         .isInstanceOf(IllegalArgumentException.class)
@@ -72,9 +90,11 @@ class CreateProductUseCaseShould {
     verifyNoInteractions(productRepository);
   }
 
-  @Test
-  void failWhenDescriptionIsBlank() {
-    var command = new CreateProductCommand(PRODUCT_ID, NAME, "   ");
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"   "})
+  void failWhenDescriptionIsBlankOrNull(String invalidDescription) {
+    var command = new CreateProductCommand(PRODUCT_ID, NAME, invalidDescription);
 
     assertThatThrownBy(() -> useCase.execute(command))
         .isInstanceOf(IllegalArgumentException.class)

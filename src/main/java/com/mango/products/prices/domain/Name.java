@@ -1,12 +1,15 @@
 package com.mango.products.prices.domain;
 
-import java.util.Objects;
-
 public record Name(String value) {
 
   public Name {
-    Objects.requireNonNull(value);
-    if (value.isBlank()) throw new IllegalArgumentException("Name cannot be blank");
+    validate(value);
     value = value.trim();
+  }
+
+  private static void validate(String value) {
+    if (value == null || value.isBlank()) {
+      throw new IllegalArgumentException("Name cannot be blank");
+    }
   }
 }
