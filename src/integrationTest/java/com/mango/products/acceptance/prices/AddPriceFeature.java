@@ -6,34 +6,28 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.fasterxml.uuid.Generators;
-import java.util.UUID;
+import com.mango.products.IntegrationTestBase;
+import com.mango.products.prices.domain.Description;
+import com.mango.products.prices.domain.Id;
+import com.mango.products.prices.domain.Name;
+import com.mango.products.prices.domain.Product;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
 
-public abstract class AddPriceFeature {
+public abstract class AddPriceFeature extends IntegrationTestBase {
 
-  @Autowired private MockMvc mockMvc;
+  private static final String UUID_V7_PATTERN =
+      "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}";
 
   @Test
   void shouldAddPriceToProductSuccessfully() throws Exception {
-    String productId = generateUUIDv7().toString();
-    String productRequestBody =
-        """
-        {
-          "id": "%s",
-          "name": "Zapatillas deportivas",
-          "description": "Modelo 2025 edición limitada"
-        }
-        """
-            .formatted(productId);
-
-    mockMvc
-        .perform(
-            post("/products").contentType(MediaType.APPLICATION_JSON).content(productRequestBody))
-        .andExpect(status().isCreated());
+    var productId = generateUUIDv7();
+    var product =
+        Product.create(
+            new Id(productId),
+            new Name("Zapatillas deportivas"),
+            new Description("Modelo 2025 edición limitada"));
+    productRepository.save(product);
 
     String priceRequestBody =
         """
@@ -54,14 +48,7 @@ public abstract class AddPriceFeature {
             header()
                 .string(
                     "Location",
-                    matchesPattern(
-                        "^/products/"
-                            + productId
-                            + "/prices/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$")))
+                    matchesPattern("^/products/" + productId + "/prices/" + UUID_V7_PATTERN + "$")))
         .andExpect(content().string(""));
-  }
-
-  private static UUID generateUUIDv7() {
-    return Generators.timeBasedEpochGenerator().generate();
   }
 }

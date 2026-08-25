@@ -5,16 +5,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.fasterxml.uuid.Generators;
-import java.util.UUID;
+import com.mango.products.IntegrationTestBase;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
 
-public abstract class CreateProductFeature {
-
-  @Autowired private MockMvc mockMvc;
+public abstract class CreateProductFeature extends IntegrationTestBase {
 
   @Test
   void shouldCreateProductSuccessfully() throws Exception {
@@ -34,9 +29,5 @@ public abstract class CreateProductFeature {
         .andExpect(status().isCreated())
         .andExpect(header().string("Location", "/products/" + id))
         .andExpect(content().string(""));
-  }
-
-  private static UUID generateUUIDv7() {
-    return Generators.timeBasedEpochGenerator().generate();
   }
 }

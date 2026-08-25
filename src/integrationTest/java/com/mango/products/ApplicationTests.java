@@ -4,12 +4,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.web.servlet.MockMvc;
 
-public abstract class ApplicationTests {
-
-  @Autowired private MockMvc mockMvc;
+public abstract class ApplicationTests extends IntegrationTestBase {
 
   @Test
   void healthEndpointShouldReturnOk() throws Exception {

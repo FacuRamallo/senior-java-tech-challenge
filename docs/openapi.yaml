@@ -51,6 +51,63 @@ paths:
                 instance: "/products"
 
   /products/{id}/prices:
+    get:
+      summary: Get active price on date
+      description: Resolves the active price for a product on a specific date and currency (defaulting to EUR).
+      operationId: getActivePrice
+      tags:
+        - Prices
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUIDv7 identifier of the product.
+          schema:
+            type: string
+            format: uuid
+          example: "01952e42-7a57-7000-8000-000000000001"
+        - name: date
+          in: query
+          required: true
+          description: Query date in ISO-8601 calendar date format (YYYY-MM-DD).
+          schema:
+            type: string
+            format: date
+          example: "2024-04-15"
+        - name: currency
+          in: query
+          required: false
+          description: ISO-4217 currency code (defaults to EUR if omitted).
+          schema:
+            type: string
+            minLength: 3
+            maxLength: 3
+          example: "EUR"
+      responses:
+        '200':
+          description: Active price found for the given product, date, and currency.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetActivePriceResponse'
+              example:
+                value: 99.99
+                currency: "EUR"
+        '400':
+          description: Invalid product ID, date format, or ISO currency code.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+              example:
+                type: "about:blank"
+                title: "Invalid Request"
+                status: 400
+                detail: "Id must be a valid UUIDv7"
+                instance: "/products/01952e42-7a57-7000-8000-000000000001/prices"
+        '404':
+          description: No active price found for the specified product, date, and currency.
+
     post:
       summary: Add a price to a product
       description: Registers a discrete historical price interval for a product. Enforces non-overlapping validity ranges per product and currency.
@@ -166,6 +223,24 @@ components:
           nullable: true
           description: End of validity period (inclusive), or null for open-ended pricing.
           example: "2024-06-30"
+
+    GetActivePriceResponse:
+      type: object
+      required:
+        - value
+        - currency
+      properties:
+        value:
+          type: number
+          format: decimal
+          description: Price amount.
+          example: 99.99
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          description: ISO-4217 currency code.
+          example: "EUR"
 
     ProblemDetail:
       type: object

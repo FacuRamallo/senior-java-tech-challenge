@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.mango.products.prices.domain.Currency;
 import com.mango.products.prices.domain.Id;
 import com.mango.products.prices.domain.Money;
 import com.mango.products.prices.domain.Price;
@@ -12,7 +13,6 @@ import com.mango.products.prices.domain.PriceRepository;
 import com.mango.products.prices.domain.ValidityPeriod;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Currency;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -66,7 +66,7 @@ class AddPriceToProductUseCaseShould {
         Price.create(
             Id.fromString(PRICE_ID),
             Id.fromString(PRODUCT_ID),
-            new Money(AMOUNT, Currency.getInstance(USD)),
+            new Money(AMOUNT, Currency.from(USD)),
             new ValidityPeriod(INIT_DATE, END_DATE));
 
     assertThat(savedPrice).usingRecursiveComparison().isEqualTo(expectedPrice);
@@ -87,7 +87,7 @@ class AddPriceToProductUseCaseShould {
         Price.create(
             Id.fromString(PRICE_ID),
             Id.fromString(PRODUCT_ID),
-            new Money(AMOUNT, Currency.getInstance(EUR)),
+            new Money(AMOUNT, Currency.DEFAULT),
             new ValidityPeriod(INIT_DATE, END_DATE));
 
     assertThat(savedPrice).usingRecursiveComparison().isEqualTo(expectedPrice);
@@ -106,7 +106,7 @@ class AddPriceToProductUseCaseShould {
         Price.create(
             Id.fromString(PRICE_ID),
             Id.fromString(PRODUCT_ID),
-            new Money(AMOUNT, Currency.getInstance(EUR)),
+            new Money(AMOUNT, Currency.DEFAULT),
             new ValidityPeriod(INIT_DATE, null));
 
     assertThat(savedPrice).usingRecursiveComparison().isEqualTo(expectedPrice);
