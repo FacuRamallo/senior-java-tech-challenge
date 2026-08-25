@@ -1,8 +1,8 @@
 package com.mango.products;
 
 import com.fasterxml.uuid.Generators;
-import com.mango.products.prices.domain.PriceRepository;
-import com.mango.products.prices.domain.ProductRepository;
+import com.mango.products.domain.PriceRepository;
+import com.mango.products.domain.ProductRepository;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.MockMvc;

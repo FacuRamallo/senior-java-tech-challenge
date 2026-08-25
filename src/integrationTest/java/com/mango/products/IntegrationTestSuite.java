@@ -1,9 +1,9 @@
 package com.mango.products;
 
-import com.mango.products.acceptance.prices.AddPriceFeature;
-import com.mango.products.acceptance.prices.CreateProductFeature;
-import com.mango.products.acceptance.prices.GetActivePriceFeature;
-import com.mango.products.acceptance.prices.GetPriceHistoryFeature;
+import com.mango.products.acceptance.AddPriceFeature;
+import com.mango.products.acceptance.CreateProductFeature;
+import com.mango.products.acceptance.GetActivePriceFeature;
+import com.mango.products.acceptance.GetPriceHistoryFeature;
 import com.mango.products.infrastructure.helper.DockerComposeHelper;
 import org.junit.jupiter.api.Nested;
 import org.springframework.boot.test.context.SpringBootTest;
