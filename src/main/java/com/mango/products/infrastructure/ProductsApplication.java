@@ -1,4 +1,4 @@
-package com.mango.products;
+package com.mango.products.infrastructure;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

@@ -1,4 +1,4 @@
-package com.mango.products.infrastructure;
+package com.mango.products.infrastructure.controller;
 
 import com.mango.products.domain.Price;
 import java.math.BigDecimal;

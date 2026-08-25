@@ -1,4 +1,4 @@
-package com.mango.products.infrastructure;
+package com.mango.products.infrastructure.controller;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

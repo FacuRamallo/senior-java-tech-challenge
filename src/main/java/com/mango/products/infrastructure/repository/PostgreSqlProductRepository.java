@@ -1,4 +1,4 @@
-package com.mango.products.infrastructure;
+package com.mango.products.infrastructure.repository;
 
 import com.mango.products.domain.Product;
 import com.mango.products.domain.ProductRepository;

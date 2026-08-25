@@ -1,4 +1,4 @@
-package com.mango.products.infrastructure;
+package com.mango.products.infrastructure.controller;
 
 import com.fasterxml.uuid.Generators;
 import com.mango.products.application.AddPriceToProductCommand;
@@ -8,11 +8,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/products")
 public class AddPriceController {
 
   private final AddPriceToProductUseCase addPriceToProductUseCase;
@@ -21,7 +19,7 @@ public class AddPriceController {
     this.addPriceToProductUseCase = addPriceToProductUseCase;
   }
 
-  @PostMapping("/{id}/prices")
+  @PostMapping("/products/{id}/prices")
   public ResponseEntity<Void> addPrice(
       @PathVariable("id") String productId, @RequestBody AddPriceRequest request) {
     var priceId = Generators.timeBasedEpochGenerator().generate().toString();

@@ -4,6 +4,7 @@ import com.mango.products.acceptance.AddPriceFeature;
 import com.mango.products.acceptance.CreateProductFeature;
 import com.mango.products.acceptance.GetActivePriceFeature;
 import com.mango.products.acceptance.GetPriceHistoryFeature;
+import com.mango.products.infrastructure.ProductsApplication;
 import com.mango.products.infrastructure.helper.DockerComposeHelper;
 import org.junit.jupiter.api.Nested;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,7 +14,9 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.ComposeContainer;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+    classes = ProductsApplication.class,
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 public class IntegrationTestSuite {

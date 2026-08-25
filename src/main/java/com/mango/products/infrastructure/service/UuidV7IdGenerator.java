@@ -1,4 +1,4 @@
-package com.mango.products.infrastructure;
+package com.mango.products.infrastructure.service;
 
 import com.fasterxml.uuid.Generators;
 import com.mango.products.domain.Id;

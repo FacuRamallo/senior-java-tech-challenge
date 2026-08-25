@@ -14,25 +14,32 @@ Traditional layered architectures (controller -> service -> dao/entity) often le
 
 ## Decision
 
-We adopt a **Hexagonal Architecture** (`com.mango.products`). The module is strictly restricted to three sub-packages:
+We adopt a **Hexagonal Architecture** (`com.mango.products`). The module is structured into three clean layers:
 
 1. **`domain`**:
    - Contains pure domain entities, aggregates, value objects, domain exceptions, and domain events.
-   - Contains all **Interfaces / Ports** (contracts for persistence, external systems, and domain gateways).
-   - **Constraint:** 100% pure Java. Zero framework annotations (no Spring, no JPA, no Jackson annotations).
+   - Contains all **Interfaces / Ports** (`ProductRepository`, `PriceRepository`, `IdGenerator`).
+   - **Constraint:** 100% pure Java. Zero external third-party or framework dependencies.
 2. **`application`**:
    - Contains Use Cases coordinating business flows, invoking domain models, and driving port interfaces.
    - Contains application-level input/output records.
 3. **`infrastructure`**:
-   - Contains all adapter implementations: REST Controllers, Web DTOs, request validation, RFC 9457 exception mappers.
-   - Contains database repository implementations (e.g., Spring Data JDBC / JdbcTemplate) implementing domain port interfaces.
-   - Contains all Spring configuration classes (`@Configuration`, beans).
+   - Organized by adapter responsibility:
+     - `controller`: REST Controllers, Web DTOs, request validation, RFC 9457 exception mappers.
+     - `repository`: PostgreSQL JDBC repositories implementing domain repository ports.
+     - `service`: Infrastructure services implementing domain ports (e.g. `UuidV7IdGenerator`).
+     - `configuration`: Spring configuration classes (`@Configuration`, bean definitions).
+     - `ProductsApplication`: Application entry point.
 
 ```
 com.mango.products/
 ├── domain/                      # Aggregates, Value Objects, Domain Exceptions, Port Interfaces
 ├── application/                 # Use Cases & Application Orchestration
-└── infrastructure/              # Controllers, Web DTOs, Spring Configurations, JDBC Repositories
+└── infrastructure/              # Adapters, Spring Config, Bootstrapping
+    ├── controller/              # REST Controllers, DTOs, Exception Handlers
+    ├── repository/              # PostgreSQL JDBC Repositories
+    ├── service/                 # Outbound Port Adapters (IdGenerator, etc.)
+    └── configuration/           # Spring Configurations
 ```
 
 ## Consequences

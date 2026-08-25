@@ -117,14 +117,14 @@ tasks.jacocoTestReport {
 }
 
 springBoot {
-    mainClass.set("com.mango.products.ProductsApplication")
+    mainClass.set("com.mango.products.infrastructure.ProductsApplication")
 }
 
 graalvmNative {
     binaries {
         named("main") {
             imageName.set("app")
-            mainClass.set("com.mango.products.ProductsApplication")
+            mainClass.set("com.mango.products.infrastructure.ProductsApplication")
         }
     }
 }

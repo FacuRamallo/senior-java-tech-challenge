@@ -1,4 +1,4 @@
-package com.mango.products.infrastructure;
+package com.mango.products.infrastructure.configuration;
 
 import com.mango.products.application.AddPriceToProductUseCase;
 import com.mango.products.application.CreateProductUseCase;
@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class ProductsConfiguration {
+public class ApplicationConfiguration {
 
   @Bean(initMethod = "migrate")
   public Flyway flyway(DataSource dataSource) {

@@ -20,9 +20,14 @@ A production-grade, ultra-high-throughput Hexagonal API for Product Management a
 
 ### 1. Hexagonal Architecture (Ports & Adapters)
 The codebase strictly enforces the Ports & Adapters pattern within `com.mango.products`:
-- **`domain`**: Pure business models, aggregates (`Product`, `Price`), self-validating Value Objects (`Id`, `Money`, `Currency`, `ValidityPeriod`, `Name`, `Description`), and outbound port interfaces (`ProductRepository`, `PriceRepository`). Zero framework or database dependencies.
+- **`domain`**: Pure business models, aggregates (`Product`, `Price`), self-validating Value Objects (`Id`, `Money`, `Currency`, `ValidityPeriod`, `Name`, `Description`), and outbound port interfaces (`ProductRepository`, `PriceRepository`, `IdGenerator`). Zero framework or third-party library dependencies (100% pure Java).
 - **`application`**: CQRS-ready Use Cases and commands/queries (`CreateProductUseCase`, `AddPriceToProductUseCase`, `GetActivePriceUseCase`, `GetPriceHistoryUseCase`). Orchestrates domain models and outbound ports.
-- **`infrastructure`**: REST controllers, web DTOs, PostgreSQL JDBC adapters (`PostgreSqlProductRepository`, `PostgreSqlPriceRepository`), Spring configurations (`ProductsConfiguration`), and global `@RestControllerAdvice` error handlers (`ProductsExceptionHandler`).
+- **`infrastructure`**: Subdivided by adapter responsibility:
+  - `controller`: REST controllers (`CreateProductController`, `AddPriceController`, `GetActivePriceController`, `GetPriceHistoryController`), Web DTOs, and RFC 9457 exception mappers (`ProductsExceptionHandler`).
+  - `repository`: PostgreSQL JDBC adapters (`PostgreSqlProductRepository`, `PostgreSqlPriceRepository`).
+  - `service`: Infrastructure services implementing domain ports (`UuidV7IdGenerator`).
+  - `configuration`: Spring configurations (`ApplicationConfiguration`).
+  - `ProductsApplication`: Spring Boot application entry point.
 
 ### 2. Multi-Currency Discrete Pricing (ADR-0043)
 Rather than performing volatile dynamic FX conversions on read, the engine implements **Option B: Discrete Multi-Currency Price Lists**:
