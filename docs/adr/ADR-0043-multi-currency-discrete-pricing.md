@@ -98,7 +98,7 @@ ON product_prices (product_id, price_currency, init_date ASC);
 ### 2. Core Domain Model (`Money` Record)
 
 ```java
-package com.mango.products.prices.domain;
+package com.mango.products.domain;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;

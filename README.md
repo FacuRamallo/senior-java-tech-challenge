@@ -19,10 +19,10 @@ A production-grade, ultra-high-throughput Hexagonal API for Product Management a
 ## 🏛️ Architectural Foundations & Key Decisions
 
 ### 1. Hexagonal Architecture (Ports & Adapters)
-The codebase strictly enforces the Ports & Adapters pattern within `com.mango.products.prices`:
+The codebase strictly enforces the Ports & Adapters pattern within `com.mango.products`:
 - **`domain`**: Pure business models, aggregates (`Product`, `Price`), self-validating Value Objects (`Id`, `Money`, `Currency`, `ValidityPeriod`, `Name`, `Description`), and outbound port interfaces (`ProductRepository`, `PriceRepository`). Zero framework or database dependencies.
 - **`application`**: CQRS-ready Use Cases and commands/queries (`CreateProductUseCase`, `AddPriceToProductUseCase`, `GetActivePriceUseCase`, `GetPriceHistoryUseCase`). Orchestrates domain models and outbound ports.
-- **`infrastructure`**: REST controllers, web DTOs, PostgreSQL JDBC adapters (`PostgreSqlProductRepository`, `PostgreSqlPriceRepository`), Spring configurations (`PricesConfiguration`), and global `@RestControllerAdvice` error handlers.
+- **`infrastructure`**: REST controllers, web DTOs, PostgreSQL JDBC adapters (`PostgreSqlProductRepository`, `PostgreSqlPriceRepository`), Spring configurations (`ProductsConfiguration`), and global `@RestControllerAdvice` error handlers (`ProductsExceptionHandler`).
 
 ### 2. Multi-Currency Discrete Pricing (ADR-0043)
 Rather than performing volatile dynamic FX conversions on read, the engine implements **Option B: Discrete Multi-Currency Price Lists**:

@@ -14,7 +14,7 @@ Traditional layered architectures (controller -> service -> dao/entity) often le
 
 ## Decision
 
-We adopt a **Feature-Oriented Hexagonal Architecture** (`com.mango.products.<feature>`). Every feature module is strictly restricted to three sub-packages:
+We adopt a **Hexagonal Architecture** (`com.mango.products`). The module is strictly restricted to three sub-packages:
 
 1. **`domain`**:
    - Contains pure domain entities, aggregates, value objects, domain exceptions, and domain events.
@@ -29,7 +29,7 @@ We adopt a **Feature-Oriented Hexagonal Architecture** (`com.mango.products.<fea
    - Contains all Spring configuration classes (`@Configuration`, beans).
 
 ```
-com.mango.products.<feature>/
+com.mango.products/
 ├── domain/                      # Aggregates, Value Objects, Domain Exceptions, Port Interfaces
 ├── application/                 # Use Cases & Application Orchestration
 └── infrastructure/              # Controllers, Web DTOs, Spring Configurations, JDBC Repositories
