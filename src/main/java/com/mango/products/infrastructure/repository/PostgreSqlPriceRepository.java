@@ -64,6 +64,88 @@ public class PostgreSqlPriceRepository implements PriceRepository {
   }
 
   @Override
+  public Optional<Price> findById(Id priceId, Id productId) {
+    String sql =
+        """
+        SELECT
+            id,
+            product_id,
+            price_amount,
+            price_currency,
+            init_date,
+            end_date
+        FROM product_prices
+        WHERE id = :id AND product_id = :productId
+        LIMIT 1
+        """;
+
+    var params =
+        new MapSqlParameterSource()
+            .addValue("id", priceId.value())
+            .addValue("productId", productId.value());
+
+    List<Price> results =
+        jdbcTemplate.query(
+            sql,
+            params,
+            (rs, rowNum) -> {
+              var id = new Id(rs.getObject("id", UUID.class));
+              var pId = new Id(rs.getObject("product_id", UUID.class));
+              var amount = rs.getBigDecimal("price_amount");
+              var curr = Currency.from(rs.getString("price_currency"));
+              var initDate = rs.getDate("init_date").toLocalDate();
+              var endDateSql = rs.getDate("end_date");
+              var endDate = endDateSql != null ? endDateSql.toLocalDate() : null;
+              return Price.create(
+                  id, pId, new Money(amount, curr), new ValidityPeriod(initDate, endDate));
+            });
+
+    return results.stream().findFirst();
+  }
+
+  @Override
+  public boolean deleteById(Id priceId, Id productId) {
+    String sql = "DELETE FROM product_prices WHERE id = :id AND product_id = :productId";
+    var params =
+        new MapSqlParameterSource()
+            .addValue("id", priceId.value())
+            .addValue("productId", productId.value());
+    int rows = jdbcTemplate.update(sql, params);
+    return rows > 0;
+  }
+
+  @Override
+  public boolean update(Price price) {
+    String sql =
+        """
+        UPDATE product_prices
+        SET
+            price_amount = :priceAmount,
+            price_currency = :priceCurrency,
+            init_date = :initDate,
+            end_date = :endDate
+        WHERE id = :id AND product_id = :productId
+        """;
+
+    var params =
+        new MapSqlParameterSource()
+            .addValue("id", price.getId().value())
+            .addValue("productId", price.getProductId().value())
+            .addValue("priceAmount", price.getMoney().amount())
+            .addValue("priceCurrency", price.getMoney().currency().value())
+            .addValue("initDate", Date.valueOf(price.getValidityPeriod().initDate()))
+            .addValue(
+                "endDate",
+                price.getValidityPeriod().endDate() != null
+                    ? Date.valueOf(price.getValidityPeriod().endDate())
+                    : null,
+                Types.DATE);
+
+    int rows = jdbcTemplate.update(sql, params);
+    return rows > 0;
+  }
+
+  @Override
   public Optional<Price> findActivePrice(Id productId, LocalDate date, Currency currency) {
     String sql =
         """

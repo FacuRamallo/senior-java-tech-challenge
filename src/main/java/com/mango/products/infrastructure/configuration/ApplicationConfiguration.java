@@ -2,8 +2,10 @@ package com.mango.products.infrastructure.configuration;
 
 import com.mango.products.application.AddPriceToProductUseCase;
 import com.mango.products.application.CreateProductUseCase;
+import com.mango.products.application.DeletePriceUseCase;
 import com.mango.products.application.GetActivePriceUseCase;
 import com.mango.products.application.GetPriceHistoryUseCase;
+import com.mango.products.application.UpdatePriceUseCase;
 import com.mango.products.domain.IdGenerator;
 import com.mango.products.domain.PriceRepository;
 import com.mango.products.domain.ProductRepository;
@@ -38,6 +40,16 @@ public class ApplicationConfiguration {
   @Bean
   public AddPriceToProductUseCase addPriceToProductUseCase(PriceRepository priceRepository) {
     return new AddPriceToProductUseCase(priceRepository);
+  }
+
+  @Bean
+  public DeletePriceUseCase deletePriceUseCase(PriceRepository priceRepository) {
+    return new DeletePriceUseCase(priceRepository);
+  }
+
+  @Bean
+  public UpdatePriceUseCase updatePriceUseCase(PriceRepository priceRepository) {
+    return new UpdatePriceUseCase(priceRepository);
   }
 
   @Bean

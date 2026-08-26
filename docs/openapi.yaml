@@ -196,6 +196,104 @@ paths:
                 detail: "Price validity period overlaps with an existing price for this product and currency"
                 instance: "/products/01952e42-7a57-7000-8000-000000000001/prices"
 
+  /products/{id}/prices/{priceId}:
+    put:
+      summary: Update a price
+      description: Updates an existing price interval. Validates domain invariants and enforces temporal non-overlapping constraints per product and currency.
+      operationId: updatePrice
+      tags:
+        - Prices
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUIDv7 identifier of the product.
+          schema:
+            type: string
+            format: uuid
+          example: "01952e42-7a57-7000-8000-000000000001"
+        - name: priceId
+          in: path
+          required: true
+          description: UUIDv7 identifier of the price to update.
+          schema:
+            type: string
+            format: uuid
+          example: "01952e42-7a57-7000-8000-000000000002"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddPriceRequest'
+            example:
+              value: 149.99
+              currency: "EUR"
+              initDate: "2024-01-01"
+              endDate: "2024-08-31"
+      responses:
+        '200':
+          description: Price successfully updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceHistoryItemResponse'
+              example:
+                id: "01952e42-7a57-7000-8000-000000000002"
+                value: 149.99
+                currency: "EUR"
+                initDate: "2024-01-01"
+                endDate: "2024-08-31"
+        '400':
+          description: Invalid payload, negative amount, invalid ISO currency, or initDate >= endDate.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
+          description: Price or product not found.
+        '409':
+          description: Price validity range overlaps with another existing price for this product and currency.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+    delete:
+      summary: Delete a price
+      description: Deletes an existing price record by its identifier.
+      operationId: deletePrice
+      tags:
+        - Prices
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUIDv7 identifier of the product.
+          schema:
+            type: string
+            format: uuid
+          example: "01952e42-7a57-7000-8000-000000000001"
+        - name: priceId
+          in: path
+          required: true
+          description: UUIDv7 identifier of the price to delete.
+          schema:
+            type: string
+            format: uuid
+          example: "01952e42-7a57-7000-8000-000000000002"
+      responses:
+        '204':
+          description: Price successfully deleted.
+        '400':
+          description: Invalid UUID format for productId or priceId.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
+          description: Price not found for the specified product.
+
 components:
   schemas:
     CreateProductRequest:

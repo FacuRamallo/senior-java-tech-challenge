@@ -8,6 +8,12 @@ public interface PriceRepository {
 
   void save(Price price);
 
+  Optional<Price> findById(Id priceId, Id productId);
+
+  boolean deleteById(Id priceId, Id productId);
+
+  boolean update(Price price);
+
   Optional<Price> findActivePrice(Id productId, LocalDate date, Currency currency);
 
   List<Price> findPriceHistory(Id productId, Currency currency);
