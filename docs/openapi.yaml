@@ -37,6 +37,14 @@ paths:
               schema:
                 type: string
                 example: "/products/01952e42-7a57-7000-8000-000000000001"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateProductResponse'
+              example:
+                id: "01952e42-7a57-7000-8000-000000000001"
+                name: "Zapatillas deportivas"
+                description: "Modelo 2025 edición limitada"
         '400':
           description: Invalid request payload or domain invariant violation (e.g. non-UUIDv7 ID, blank name/description).
           content:
@@ -193,14 +201,13 @@ components:
     CreateProductRequest:
       type: object
       required:
-        - id
         - name
         - description
       properties:
         id:
           type: string
           format: uuid
-          description: Client-generated UUIDv7.
+          description: Optional client-generated UUIDv7 (generated automatically by server if omitted).
           example: "01952e42-7a57-7000-8000-000000000001"
         name:
           type: string
@@ -211,6 +218,27 @@ components:
         description:
           type: string
           minLength: 1
+          description: Non-blank product description.
+          example: "Modelo 2025 edición limitada"
+
+    CreateProductResponse:
+      type: object
+      required:
+        - id
+        - name
+        - description
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique product UUIDv7 identifier.
+          example: "01952e42-7a57-7000-8000-000000000001"
+        name:
+          type: string
+          description: Non-blank product name.
+          example: "Zapatillas deportivas"
+        description:
+          type: string
           description: Non-blank product description.
           example: "Modelo 2025 edición limitada"
 

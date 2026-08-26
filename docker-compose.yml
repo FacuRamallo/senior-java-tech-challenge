@@ -1,16 +1,63 @@
-version: "3.9"
-
 services:
   db:
     image: postgres:18-alpine
+    container_name: product-db
     environment:
       POSTGRES_USER: products_user
       POSTGRES_PASSWORD: products_password
       POSTGRES_DB: products
     ports:
-      - "5432"
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U products_user -d products"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
     deploy:
       resources:
         limits:
           cpus: '0.5'
           memory: 1G
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: product-api:latest
+    container_name: product-api
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/products
+      - SPRING_DATASOURCE_USERNAME=products_user
+      - SPRING_DATASOURCE_PASSWORD=products_password
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  benchmark:
+    build:
+      context: .
+      dockerfile: Dockerfile.benchmark
+    image: product-benchmark:latest
+    container_name: product-benchmark
+    depends_on:
+      - app
+    command: sh -c "chmod +x /app/benchmark.sh && /app/benchmark.sh"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M

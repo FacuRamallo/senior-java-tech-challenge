@@ -1,34 +1,36 @@
-# Docker Architecture & Multi-Architecture Support
+# Docker Architecture & Execution Workflow
 
-This document explains the structural changes made to the Docker configuration to support a **GraalVM Native Image** build (Java 25 baseline) and ensure flawless **Multi-Architecture** (Apple Silicon ARM64 + Intel AMD64) execution.
+This document explains the Docker configuration supporting **GraalVM Native Image** compilation (Java 25 baseline), seamless **Multi-Architecture** execution (ARM64 & AMD64), and our dual-compose testing vs runtime separation.
 
 ---
 
 ## 1. `Dockerfile` (Spring Boot Application)
 
-The primary Dockerfile is a **Multi-Stage GraalVM Native Image Build**:
+The primary Dockerfile uses a **Multi-Stage GraalVM Native Image Build**:
 
 * **Stage 1: The Builder (`ghcr.io/graalvm/native-image-community:25`)**
   * Utilizes the official GraalVM Community 25 image with Gradle 9.1.0.
-  * The build command is `./gradlew nativeCompile --no-daemon -x test -x integrationTest`. This triggers Spring Boot 4's Ahead-Of-Time (AOT) engine (`processAot`) to analyze the code and compile it into a standalone machine-code executable (`/app/build/native/nativeCompile/app`).
+  * Ahead-Of-Time (AOT) compiler compiles bytecode into a standalone machine-code binary (`/app/build/native/nativeCompile/app`).
 * **Stage 2: The Runtime (`ubuntu:22.04`)**
-  * Because a GraalVM native image does not require a JVM to run, the runtime base is a clean Ubuntu image. This drastically shrinks the container memory footprint (~30-50MB vs ~400MB+ for standard JVM) and achieves sub-200ms cold startup times.
-  * The `ENTRYPOINT` executes the native binary directly (`["/app/app"]`).
-* **Multi-Arch Support:** Both the GraalVM builder and the Ubuntu runtime natively publish manifests for `linux/amd64` and `linux/arm64`. By omitting hardcoded `--platform` flags, Docker automatically builds and runs on the native architecture of the host without Rosetta/QEMU emulation.
+  * Standalone native binary runs without a JVM, reducing runtime memory footprint to ~30-50MB and achieving sub-50ms cold startup times.
+* **Multi-Arch Support**: Docker automatically builds and runs on the native architecture of the host (Apple Silicon ARM64, Linux ARM64/x86_64, Windows WSL2) without emulation overhead.
 
 ---
 
-## 2. `Dockerfile.benchmark` (Performance & Health Test Script)
+## 2. GraalVM Build Lifecycle: Build Once, Run Blazingly Fast
 
-The benchmark container is optimized for maximum efficiency and low overhead:
-
-* **Alpine Linux (`alpine:3.19`):** Lightweight base image (~5MB) with instant startup.
-* **Package Manager:** Installs dependencies via `apk add --no-cache curl jq bc`.
-* **Multi-Arch Support:** Alpine executes natively on both Apple Silicon (M-series ARM64) and Intel/AMD architectures without emulation overhead.
+* **Build Phase (Once)**: Native Image compilation is CPU/memory-intensive and takes ~2-3 minutes during the initial image build (`docker compose build` or `docker compose up --build`).
+* **Execution Phase (Subsequent Runs)**: Once the `product-api:latest` Docker image is built, all subsequent runs (`docker compose up`) launch instantly without rebuilding.
 
 ---
 
-## 3. Ephemeral Dual-Target Compose Setup
+## 3. Docker Compose Strategy
 
-* **`docker-compose.yml`**: Contains only the stateless `db` service (`postgres:18-alpine`), allowing Testcontainers (`ComposeContainer`) to run integration tests against clean ephemeral containers.
-* **`docker-compose.override.yml`**: Adds `app` (`product-api`) and `benchmark` (`product-benchmark`) services for full evaluator runs via `docker compose up --build`.
+### `docker-compose.yml` (Standard Runtime & Benchmark)
+Serves as the root compose configuration for evaluating and running the full system:
+* `db`: PostgreSQL 18 with built-in `pg_isready` health check.
+* `app` (`product-api`): GraalVM Native Image Spring Boot service, starts once `db` is healthy.
+* `benchmark` (`product-benchmark`): Automated high-concurrency load testing container.
+
+### `docker-compose.test.yml` (Integration Test Harness)
+Dedicated minimal compose file containing only the isolated `db` container used by Testcontainers (`DockerComposeHelper`) during `./gradlew integrationTest`.

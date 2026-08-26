@@ -11,7 +11,7 @@ public class DockerComposeHelper {
 
   @SuppressWarnings("resource")
   public static ComposeContainer create() {
-    return new ComposeContainer(new File("docker-compose.yml"))
+    return new ComposeContainer(new File("docker-compose.test.yml"))
         .withExposedService(POSTGRES, POSTGRES_PORT);
   }
 
