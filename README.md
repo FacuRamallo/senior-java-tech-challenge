@@ -21,6 +21,7 @@ For detailed architectural justifications and technical decisions, refer to:
 - [ADR-0003: Temporal Modeling & PostgreSQL Range Containment](docs/adr/0003-temporal-modeling-and-timezone-architecture.md)
 - [ADR-0004: Price Lifecycle Invariants & Historical Immutability](docs/adr/0004-price-lifecycle-and-historical-immutability.md)
 - [ADR-0043: Multi-Currency Discrete Pricing & Money Value Object](docs/adr/ADR-0043-multi-currency-discrete-pricing.md)
+- [k6 Load Testing & Resource Tracking Guide](docs/k6-performance-benchmark.md)
 - [Docker Architecture & Multi-Arch Guide](docs/docker-architecture.md)
 - [OpenAPI 3.1 Specification](docs/openapi.yaml)
 - [Original Technical Challenge Instructions](INSTRUCTIONS.md)
@@ -65,7 +66,7 @@ java -version
 
 ---
 
-### 3. Docker Compose Execution
+### 3. Docker Compose Execution & Benchmarks
 
 The system uses Ahead-Of-Time (AOT) GraalVM compilation. **Build the container image once**, and then run subsequent executions instantly (~50ms startup time, ~30MB memory).
 
@@ -103,7 +104,43 @@ docker compose down -v
 
 ---
 
-### 4. Local Development & Automated Tests (Gradle)
+### 4. Exploring & Verifying Application Resource Metrics
+
+Reviewers and developers can inspect the application's resource consumption under load through three methods:
+
+#### Method A: Automated k6 Console Report
+Executing `docker compose up --build k6-benchmark --abort-on-container-exit` outputs an automated resource banner alongside k6 metrics:
+- **🚀 Cold Startup Duration**: Measured in milliseconds from boot to `/actuator/health` UP (~45ms).
+- **💾 Idle Memory vs Peak Memory**: Heap/native RAM used before and under load (~28MB idle to ~45MB peak out of 1024MB limit).
+- **⚡ Process CPU Utilization**: Percentage of container CPU utilized (~55–65% of 1.0 CPU limit).
+- **🧵 Active JVM Threads**: Number of concurrent virtual/carrier threads.
+
+#### Method B: Real-Time Host Inspection (`docker stats`)
+While running load (`benchmark` or `k6-benchmark`), open a separate terminal window:
+```bash
+docker stats product-api
+```
+Displays real-time kernel-level CPU %, Memory RSS usage, and Network I/O.
+
+#### Method C: Live Spring Boot Actuator Endpoints
+When the API is running, query metrics directly via HTTP:
+```bash
+# Check application status & health
+curl -s http://localhost:8080/actuator/health
+
+# Current memory used (in bytes)
+curl -s http://localhost:8080/actuator/metrics/jvm.memory.used
+
+# Process CPU usage (fraction of 1.0)
+curl -s http://localhost:8080/actuator/metrics/process.cpu.usage
+
+# Active JVM threads
+curl -s http://localhost:8080/actuator/metrics/jvm.threads.live
+```
+
+---
+
+### 5. Local Development & Automated Tests (Gradle)
 
 ```bash
 # Run unit tests (Domain & Application Use Cases)

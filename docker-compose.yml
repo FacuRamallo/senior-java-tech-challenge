@@ -72,6 +72,9 @@ services:
       - app
     environment:
       - BASE_URL=http://product-api:8080
+    # Mount script as read-only volume to allow real-time test iteration without rebuilding container image
+    volumes:
+      - ./k6/benchmark.js:/app/benchmark.js:ro
     deploy:
       resources:
         limits:

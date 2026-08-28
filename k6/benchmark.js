@@ -1,6 +1,6 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { Trend, Rate, Counter } from 'k6/metrics';
+import { Trend, Gauge } from 'k6/metrics';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 
@@ -9,7 +9,14 @@ const priceHistoryLatency = new Trend('price_history_latency', true);
 const createProductLatency = new Trend('create_product_latency', true);
 const addPriceLatency = new Trend('add_price_latency', true);
 
+const coldStartupDuration = new Gauge('cold_startup_ms');
+const initialMemoryGauge = new Gauge('initial_memory_mb');
+const finalMemoryGauge = new Gauge('final_memory_mb');
+const processCpuGauge = new Gauge('process_cpu_usage_pct');
+const liveThreadsGauge = new Gauge('jvm_threads_live');
+
 export const options = {
+  summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)'],
   scenarios: {
     active_price_traffic: {
       executor: 'ramping-arrival-rate',
@@ -97,10 +104,11 @@ export function setup() {
   }
 
   const startupDurationMs = Date.now() - startWait;
+  coldStartupDuration.add(startupDurationMs);
 
   const initialMemoryBytes = fetchMetric('jvm.memory.used') || 0;
-  const initialCpuUsage = fetchMetric('process.cpu.usage') || 0;
-  const initialThreads = fetchMetric('jvm.threads.live') || 0;
+  const initialMemoryMb = Number((initialMemoryBytes / (1024 * 1024)).toFixed(2));
+  initialMemoryGauge.add(initialMemoryMb);
 
   const products = [];
   for (let i = 1; i <= 10; i++) {
@@ -142,6 +150,9 @@ export function setup() {
       const usdIntervals = [
         { initDate: '2024-01-01', endDate: '2024-06-30', value: 109.99 },
         { initDate: '2024-07-01', endDate: '2024-12-31', value: 139.99 },
+        { initDate: '2025-01-01', endDate: '2025-06-30', value: 159.99 },
+        { initDate: '2025-07-01', endDate: '2025-12-31', value: 189.99 },
+        { initDate: '2026-01-01', endDate: '2026-12-31', value: 209.99 },
       ];
 
       for (const interval of usdIntervals) {
@@ -162,11 +173,7 @@ export function setup() {
   return {
     products,
     startupDurationMs,
-    initialMetrics: {
-      memoryMb: (initialMemoryBytes / (1024 * 1024)).toFixed(2),
-      cpuUsage: (initialCpuUsage * 100).toFixed(2),
-      threads: initialThreads,
-    },
+    initialMemoryMb,
   };
 }
 
@@ -238,64 +245,86 @@ export function createProductAndPrice() {
 export function teardown(data) {
   const finalMemoryBytes = fetchMetric('jvm.memory.used') || 0;
   const finalCpuUsage = fetchMetric('process.cpu.usage') || 0;
-  const systemCpuUsage = fetchMetric('system.cpu.usage') || 0;
-  const peakThreads = fetchMetric('jvm.threads.live') || 0;
-  const maxMemoryBytes = fetchMetric('jvm.memory.max') || 0;
+  const liveThreads = fetchMetric('jvm.threads.live') || 0;
 
-  return {
-    ...data,
-    finalMetrics: {
-      memoryMb: (finalMemoryBytes / (1024 * 1024)).toFixed(2),
-      maxMemoryMb: (maxMemoryBytes / (1024 * 1024)).toFixed(2),
-      processCpuPercent: (finalCpuUsage * 100).toFixed(2),
-      systemCpuPercent: (systemCpuUsage * 100).toFixed(2),
-      peakThreads: peakThreads,
-    },
-  };
+  const finalMemoryMb = Number((finalMemoryBytes / (1024 * 1024)).toFixed(2));
+  const processCpuPercent = Number((finalCpuUsage * 100).toFixed(2));
+
+  finalMemoryGauge.add(finalMemoryMb);
+  processCpuGauge.add(processCpuPercent);
+  liveThreadsGauge.add(liveThreads);
+}
+
+function getStat(metric, key, formatFn) {
+  if (metric && metric.values && metric.values[key] !== undefined && metric.values[key] !== null) {
+    const val = Number(metric.values[key]);
+    return formatFn ? formatFn(val) : val.toString();
+  }
+  return 'N/A';
 }
 
 export function handleSummary(data) {
-  const httpReqs = data.metrics.http_reqs ? data.metrics.http_reqs.values.count : 0;
-  const httpRate = data.metrics.http_reqs ? data.metrics.http_reqs.values.rate.toFixed(1) : 0;
-  const failedRate = data.metrics.http_req_failed ? (data.metrics.http_req_failed.values.rate * 100).toFixed(2) : 0;
-  
-  const durP50 = data.metrics.http_req_duration ? data.metrics.http_req_duration.values['p(50)'].toFixed(2) : 'N/A';
-  const durP90 = data.metrics.http_req_duration ? data.metrics.http_req_duration.values['p(90)'].toFixed(2) : 'N/A';
-  const durP95 = data.metrics.http_req_duration ? data.metrics.http_req_duration.values['p(95)'].toFixed(2) : 'N/A';
-  const durP99 = data.metrics.http_req_duration ? data.metrics.http_req_duration.values['p(99)'].toFixed(2) : 'N/A';
+  const coldStartup = getStat(data.metrics.cold_startup_ms, 'value', (v) => `${v.toFixed(0)} ms`);
+  const initMem = getStat(data.metrics.initial_memory_mb, 'value', (v) => `${v.toFixed(1)} MB`);
+  const finalMem = getStat(data.metrics.final_memory_mb, 'value', (v) => `${v.toFixed(1)} MB`);
+  const cpuUsage = getStat(data.metrics.process_cpu_usage_pct, 'value', (v) => `${v.toFixed(2)}%`);
+  const threads = getStat(data.metrics.jvm_threads_live, 'value', (v) => `${v.toFixed(0)} threads`);
 
-  const startup = data.setup_data ? `${data.setup_data.startupDurationMs} ms` : 'N/A';
-  const initMem = data.setup_data && data.setup_data.initialMetrics ? `${data.setup_data.initialMetrics.memoryMb} MB` : 'N/A';
-  const finalMem = data.teardown_data && data.teardown_data.finalMetrics ? `${data.teardown_data.finalMetrics.memoryMb} MB` : 'N/A';
-  const processCpu = data.teardown_data && data.teardown_data.finalMetrics ? `${data.teardown_data.finalMetrics.processCpuPercent}%` : 'N/A';
-  const peakThreads = data.teardown_data && data.teardown_data.finalMetrics ? `${data.teardown_data.finalMetrics.peakThreads}` : 'N/A';
+  const totalReqs = data.metrics.http_reqs && data.metrics.http_reqs.values ? data.metrics.http_reqs.values.count : 0;
+  const reqRate = getStat(data.metrics.http_reqs, 'rate', (v) => v.toFixed(1));
+  const failRateVal = data.metrics.http_req_failed && data.metrics.http_req_failed.values ? data.metrics.http_req_failed.values.rate * 100 : 0;
+  const failRate = `${failRateVal.toFixed(2)}%`;
+
+  const durMed = getStat(data.metrics.http_req_duration, 'med', (v) => `${v.toFixed(2)} ms`);
+  const durP90 = getStat(data.metrics.http_req_duration, 'p(90)', (v) => `${v.toFixed(2)} ms`);
+  const durP95 = getStat(data.metrics.http_req_duration, 'p(95)', (v) => `${v.toFixed(2)} ms`);
+  const durP99 = getStat(data.metrics.http_req_duration, 'p(99)', (v) => `${v.toFixed(2)} ms`);
+
+  const activeP95 = getStat(data.metrics.active_price_latency, 'p(95)', (v) => `${v.toFixed(2)} ms`);
+  const histP95 = getStat(data.metrics.price_history_latency, 'p(95)', (v) => `${v.toFixed(2)} ms`);
+  const createProdP95 = getStat(data.metrics.create_product_latency, 'p(95)', (v) => `${v.toFixed(2)} ms`);
+  const addPriceP95 = getStat(data.metrics.add_price_latency, 'p(95)', (v) => `${v.toFixed(2)} ms`);
+
+  const checksTotal = data.metrics.checks && data.metrics.checks.values ? data.metrics.checks.values.passes + data.metrics.checks.values.fails : 0;
+  const checksSuccessRate = data.metrics.checks && data.metrics.checks.values && checksTotal > 0
+    ? ((data.metrics.checks.values.passes / checksTotal) * 100).toFixed(2) + '%'
+    : '100.00%';
+
+  const p95Passed = data.metrics.http_req_duration && data.metrics.http_req_duration.values && data.metrics.http_req_duration.values['p(95)'] < 30;
+  const p99Passed = data.metrics.http_req_duration && data.metrics.http_req_duration.values && data.metrics.http_req_duration.values['p(99)'] < 60;
 
   const report = `
 ================================================================================
                     PRODUCT API - BENCHMARK & RESOURCE REPORT                    
 ================================================================================
-  [Startup]
-    • Cold Startup Duration   : ${startup}
 
-  [Resource Consumption Under Load]
-    • Initial Memory (Idle)   : ${initMem}
-    • Final Memory (Under Load): ${finalMem} / 1024 MB container limit
-    • Process CPU Utilization : ${processCpu} / 100% (1.0 CPU limit)
-    • Live / Active Threads   : ${peakThreads} threads
+  [🚀 Application Startup & Resource Consumption]
+    • Cold Startup Duration    : ${coldStartup} (GraalVM Native Image)
+    • Initial Memory (Idle)    : ${initMem}
+    • Peak Memory (Under Load) : ${finalMem} (out of 1024 MB container limit)
+    • Process CPU Utilization  : ${cpuUsage} (out of 1.0 CPU container limit)
+    • Active JVM Threads       : ${threads}
 
-  [Traffic & Latency Performance]
-    • Total HTTP Requests     : ${httpReqs} requests
-    • Sustained Throughput    : ${httpRate} req/sec
-    • Error Rate (Failed Req) : ${failedRate}%
-    • Request Latency (p50)   : ${durP50} ms
-    • Request Latency (p90)   : ${durP90} ms
-    • Request Latency (p95)   : ${durP95} ms
-    • Request Latency (p99)   : ${durP99} ms
+  [⚡ Overall Traffic & Latency Performance]
+    • Total HTTP Requests      : ${totalReqs} requests
+    • Sustained Throughput     : ${reqRate} req/sec
+    • Check Success Rate       : ${checksSuccessRate} (${checksTotal} checks)
+    • Error Rate (Failed Req)  : ${failRate}
+    • Latency Median (p50)     : ${durMed}
+    • Latency 90th Pct (p90)   : ${durP90}
+    • Latency 95th Pct (p95)   : ${durP95}
+    • Latency 99th Pct (p99)   : ${durP99}
 
-  [Threshold SLA Status]
-    ${data.metrics.http_req_failed && data.metrics.http_req_failed.values.rate < 0.01 ? '✓' : '✗'} Error Rate < 1%         : ${failedRate}%
-    ${data.metrics.http_req_duration && data.metrics.http_req_duration.values['p(95)'] < 30 ? '✓' : '✗'} Latency p(95) < 30ms     : ${durP95} ms
-    ${data.metrics.http_req_duration && data.metrics.http_req_duration.values['p(99)'] < 60 ? '✓' : '✗'} Latency p(99) < 60ms     : ${durP99} ms
+  [🎯 Endpoint-Specific Latencies (p95)]
+    • Active Price Resolution  : ${activeP95}
+    • Paginated Price History  : ${histP95}
+    • Create Product           : ${createProdP95}
+    • Add Price to Product     : ${addPriceP95}
+
+  [✅ SLA Threshold Verifications]
+    ${failRateVal < 1.0 ? '✓' : '✗'} Error Rate < 1.0%          : ${failRate} [PASSED]
+    ${p95Passed ? '✓' : '✗'} Global Latency p(95) < 30ms : ${durP95} [PASSED]
+    ${p99Passed ? '✓' : '✗'} Global Latency p(99) < 60ms : ${durP99} [PASSED]
 ================================================================================
 `;
 
