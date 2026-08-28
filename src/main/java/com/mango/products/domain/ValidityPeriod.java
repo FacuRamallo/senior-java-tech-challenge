@@ -39,4 +39,8 @@ public record ValidityPeriod(LocalDate initDate, LocalDate endDate) {
     boolean beforeOrEqualEnd = endDate == null || !date.isAfter(endDate);
     return afterOrEqualInit && beforeOrEqualEnd;
   }
+
+  public boolean hasOpenEndedEndDate() {
+    return endDate == null;
+  }
 }

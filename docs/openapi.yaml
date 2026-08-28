@@ -1,7 +1,15 @@
 openapi: 3.1.0
 info:
   title: Products & Prices Management API
-  description: High-performance Hexagonal API for Product Management and Dynamic Multi-Currency Price Resolution.
+  description: |
+    High-performance Hexagonal API for Product Management and Dynamic Multi-Currency Price Resolution.
+    
+    ### Architectural & Business Assumptions:
+    - **Price History & Audit Integrity**: The API maintains an immutable chronological record of historical prices for accounting and audit compliance.
+    - **Creation Invariant**: New prices can be added sequentially. If a previous price exists for the product and currency, it must have a closed `endDate`, and the new price's `initDate` must be strictly after that `endDate`.
+    - **Update Invariant**: Only the currently active price (`initDate <= today <= endDate`) can be updated (e.g. to set an `endDate` or adjust amounts).
+    - **Deletion Invariant**: Price deletion is unsupported and disabled to prevent audit trail destruction.
+    - **Authorization Scope**: Modifying past/historical prices or executing hard deletions will require a dedicated administrative authorization mechanism (deferred to future iterations).
   version: 1.0.0
   contact:
     name: Mango Engineering
@@ -91,17 +99,41 @@ paths:
             minLength: 3
             maxLength: 3
           example: "EUR"
+        - name: sortOrder
+          in: query
+          required: false
+          description: Keyset sort order (DESC for newest to oldest, ASC for oldest to newest). Defaults to DESC.
+          schema:
+            type: string
+            enum: [DESC, ASC]
+            default: DESC
+          example: "DESC"
+        - name: cursor
+          in: query
+          required: false
+          description: Opaque Base64 URL-safe keyset pagination cursor token encoding the reference date (YYYY-MM-DD).
+          schema:
+            type: string
+          example: "MjAyNC0wNy0wMQ"
+        - name: pageSize
+          in: query
+          required: false
+          description: Number of price items to return per page (must be between 20 and 100, defaults to 20).
+          schema:
+            type: integer
+            minimum: 20
+            maximum: 100
+            default: 20
+          example: 20
       responses:
         '200':
-          description: Price resolution successful (single active price object if date query param provided, or chronological array of price history items).
+          description: Price resolution successful (single active price object if date query param provided, or paginated envelope of price history items).
           content:
             application/json:
               schema:
                 oneOf:
                   - $ref: '#/components/schemas/GetActivePriceResponse'
-                  - type: array
-                    items:
-                      $ref: '#/components/schemas/PriceHistoryItemResponse'
+                  - $ref: '#/components/schemas/GetPriceHistoryResponse'
               examples:
                 activePrice:
                   summary: Single active price response (when date param provided)
@@ -109,18 +141,21 @@ paths:
                     value: 99.99
                     currency: "EUR"
                 priceHistory:
-                  summary: Chronological price history response (when date param omitted)
+                  summary: Paginated price history response envelope (when date param omitted)
                   value:
-                    - id: "01952e42-7a57-7000-8000-000000000002"
-                      value: 99.99
-                      currency: "EUR"
-                      initDate: "2024-01-01"
-                      endDate: "2024-06-30"
-                    - id: "01952e42-7a57-7000-8000-000000000003"
-                      value: 149.99
-                      currency: "EUR"
-                      initDate: "2024-07-01"
-                      endDate: "2024-12-31"
+                    next: "/products/01952e42-7a57-7000-8000-000000000001/prices?currency=EUR&cursor=MjAyNC0wMS0wMQ&pageSize=20&sortOrder=DESC"
+                    previous: null
+                    prices:
+                      - id: "01952e42-7a57-7000-8000-000000000003"
+                        value: 149.99
+                        currency: "EUR"
+                        initDate: "2024-07-01"
+                        endDate: "2024-12-31"
+                      - id: "01952e42-7a57-7000-8000-000000000002"
+                        value: 99.99
+                        currency: "EUR"
+                        initDate: "2024-01-01"
+                        endDate: "2024-06-30"
         '400':
           description: Invalid product ID, date format, or ISO currency code.
           content:
@@ -138,7 +173,9 @@ paths:
 
     post:
       summary: Add a price to a product
-      description: Registers a discrete historical price interval for a product. Enforces non-overlapping validity ranges per product and currency.
+      description: |
+        Registers a sequential price interval for a product.
+        Requires that if a previous price exists, its `endDate` must not be null, and the new price's `initDate` must be strictly after that `endDate`.
       operationId: addPriceToProduct
       tags:
         - Prices
@@ -172,7 +209,7 @@ paths:
                 type: string
                 example: "/products/01952e42-7a57-7000-8000-000000000001/prices/01952e42-7a57-7000-8000-000000000002"
         '400':
-          description: Invalid price payload, negative amount, invalid ISO currency, or initDate >= endDate.
+          description: Invalid price payload, open-ended previous price, initDate <= previous endDate, negative amount, invalid ISO currency, or initDate >= endDate.
           content:
             application/problem+json:
               schema:
@@ -181,7 +218,7 @@ paths:
                 type: "about:blank"
                 title: "Invalid Request"
                 status: 400
-                detail: "Init date must be before end date"
+                detail: "New price init date must be after the last price end date"
                 instance: "/products/01952e42-7a57-7000-8000-000000000001/prices"
         '409':
           description: Price validity range overlaps with an existing price for this product and currency.
@@ -198,8 +235,10 @@ paths:
 
   /products/{id}/prices/{priceId}:
     put:
-      summary: Update a price
-      description: Updates an existing price interval. Validates domain invariants and enforces temporal non-overlapping constraints per product and currency.
+      summary: Update currently active price
+      description: |
+        Updates the currently active price interval for a product (`initDate <= today <= endDate`).
+        Modifying historical/past or future scheduled prices is prohibited without administrative authorization.
       operationId: updatePrice
       tags:
         - Prices
@@ -245,7 +284,7 @@ paths:
                 initDate: "2024-01-01"
                 endDate: "2024-08-31"
         '400':
-          description: Invalid payload, negative amount, invalid ISO currency, or initDate >= endDate.
+          description: Price is not currently active, invalid payload, negative amount, invalid ISO currency, or initDate >= endDate.
           content:
             application/problem+json:
               schema:
@@ -258,41 +297,6 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
-
-    delete:
-      summary: Delete a price
-      description: Deletes an existing price record by its identifier.
-      operationId: deletePrice
-      tags:
-        - Prices
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: UUIDv7 identifier of the product.
-          schema:
-            type: string
-            format: uuid
-          example: "01952e42-7a57-7000-8000-000000000001"
-        - name: priceId
-          in: path
-          required: true
-          description: UUIDv7 identifier of the price to delete.
-          schema:
-            type: string
-            format: uuid
-          example: "01952e42-7a57-7000-8000-000000000002"
-      responses:
-        '204':
-          description: Price successfully deleted.
-        '400':
-          description: Invalid UUID format for productId or priceId.
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
-        '404':
-          description: Price not found for the specified product.
 
 components:
   schemas:
@@ -387,6 +391,26 @@ components:
           maxLength: 3
           description: ISO-4217 currency code.
           example: "EUR"
+
+    GetPriceHistoryResponse:
+      type: object
+      required:
+        - prices
+      properties:
+        next:
+          type: string
+          nullable: true
+          description: Navigation URI to fetch the next keyset page, or null if no further pages exist.
+          example: "/products/01952e42-7a57-7000-8000-000000000001/prices?currency=EUR&cursor=MjAyNC0wMS0wMQ&pageSize=20&sortOrder=DESC"
+        previous:
+          type: string
+          nullable: true
+          description: Navigation URI to fetch the previous keyset page, or null if no previous pages exist.
+          example: null
+        prices:
+          type: array
+          items:
+            $ref: '#/components/schemas/PriceHistoryItemResponse'
 
     PriceHistoryItemResponse:
       type: object

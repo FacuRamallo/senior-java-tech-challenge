@@ -5,14 +5,18 @@ import com.mango.products.domain.Money;
 import com.mango.products.domain.Price;
 import com.mango.products.domain.PriceRepository;
 import com.mango.products.domain.ValidityPeriod;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.Optional;
 
 public class UpdatePriceUseCase {
 
   private final PriceRepository priceRepository;
+  private final Clock clock;
 
-  public UpdatePriceUseCase(PriceRepository priceRepository) {
+  public UpdatePriceUseCase(PriceRepository priceRepository, Clock clock) {
     this.priceRepository = priceRepository;
+    this.clock = clock;
   }
 
   public Optional<Price> execute(UpdatePriceCommand command) {
@@ -20,11 +24,18 @@ public class UpdatePriceUseCase {
     var productId = Id.fromString(command.productId());
     var money = Money.from(command.amount(), command.currency());
     var validityPeriod = new ValidityPeriod(command.initDate(), command.endDate());
-    var price = Price.create(priceId, productId, money, validityPeriod);
-    boolean updated = priceRepository.update(price);
-    if (!updated) {
+
+    var existingPrice = priceRepository.findById(priceId, productId);
+    if (existingPrice.isEmpty()) {
       return Optional.empty();
     }
+
+    if (!existingPrice.get().getValidityPeriod().contains(LocalDate.now(clock))) {
+      throw new IllegalArgumentException("Only currently active prices can be updated");
+    }
+
+    var price = Price.create(priceId, productId, money, validityPeriod);
+    priceRepository.update(price);
     return Optional.of(price);
   }
 }

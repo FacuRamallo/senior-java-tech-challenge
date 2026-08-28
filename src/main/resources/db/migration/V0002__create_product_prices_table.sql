@@ -17,4 +17,4 @@ CREATE TABLE product_prices (
 );
 
 CREATE INDEX idx_product_prices_lookup 
-ON product_prices (product_id, price_currency, init_date ASC);
+ON product_prices (product_id, price_currency, init_date DESC);

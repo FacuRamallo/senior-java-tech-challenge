@@ -24,6 +24,10 @@ public abstract class UpdatePriceFeature extends IntegrationTestBase {
   void shouldUpdatePriceSuccessfully() throws Exception {
     var productId = generateUUIDv7();
     var priceId = generateUUIDv7();
+    var today = LocalDate.now();
+    var initDate = today.minusDays(10);
+    var endDate = today.plusDays(30);
+    var updatedEndDate = today.plusDays(60);
 
     var product =
         Product.create(
@@ -37,7 +41,7 @@ public abstract class UpdatePriceFeature extends IntegrationTestBase {
             new Id(priceId),
             new Id(productId),
             new Money(new BigDecimal("99.99"), Currency.DEFAULT),
-            new ValidityPeriod(LocalDate.of(2024, 1, 1), LocalDate.of(2024, 6, 30)));
+            new ValidityPeriod(initDate, endDate));
     priceRepository.save(price);
 
     String updateRequestBody =
@@ -45,10 +49,11 @@ public abstract class UpdatePriceFeature extends IntegrationTestBase {
         {
           "value": 149.99,
           "currency": "EUR",
-          "initDate": "2024-01-01",
-          "endDate": "2024-08-31"
+          "initDate": "%s",
+          "endDate": "%s"
         }
-        """;
+        """
+            .formatted(initDate, updatedEndDate);
 
     String expectedResponseBody =
         """
@@ -56,11 +61,11 @@ public abstract class UpdatePriceFeature extends IntegrationTestBase {
           "id": "%s",
           "value": 149.99,
           "currency": "EUR",
-          "initDate": "2024-01-01",
-          "endDate": "2024-08-31"
+          "initDate": "%s",
+          "endDate": "%s"
         }
         """
-            .formatted(priceId);
+            .formatted(priceId, initDate, updatedEndDate);
 
     mockMvc
         .perform(

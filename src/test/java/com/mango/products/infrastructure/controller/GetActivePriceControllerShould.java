@@ -1,4 +1,4 @@
-package com.mango.products.application;
+package com.mango.products.infrastructure.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -9,8 +9,10 @@ import com.mango.products.domain.Currency;
 import com.mango.products.domain.Id;
 import com.mango.products.domain.Money;
 import com.mango.products.domain.Price;
-import com.mango.products.domain.PriceRepository;
 import com.mango.products.domain.ValidityPeriod;
+import com.mango.products.infrastructure.controller.readmode.GetActivePriceController;
+import com.mango.products.infrastructure.controller.readmode.GetActivePriceResponse;
+import com.mango.products.infrastructure.repository.ActivePriceReader;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Optional;
@@ -24,7 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class GetActivePriceUseCaseShould {
+class GetActivePriceControllerShould {
 
   private static final String PRICE_ID = "01952e42-7a57-7000-8000-000000000002";
   private static final String PRODUCT_ID = "01952e42-7a57-7000-8000-000000000001";
@@ -43,141 +45,109 @@ class GetActivePriceUseCaseShould {
   private static final String ERROR_DATE_FORMAT = "Date must be in ISO-8601 format (YYYY-MM-DD)";
   private static final String ERROR_CURRENCY_ISO = "Currency must be a valid ISO-4217 code";
 
-  @Mock private PriceRepository priceRepository;
+  @Mock private ActivePriceReader activePriceReader;
 
-  private GetActivePriceUseCase useCase;
+  private GetActivePriceController controller;
 
   @BeforeEach
   void setUp() {
-    useCase = new GetActivePriceUseCase(priceRepository);
+    controller = new GetActivePriceController(activePriceReader);
   }
 
   @Test
   void returnActivePriceForProductAndDateWithExplicitCurrency() {
-    var query = aQueryWithCurrency(USD);
+    var price = aPrice(USD);
+    when(activePriceReader.findActivePrice(
+            Id.fromString(PRODUCT_ID), QUERY_DATE, Currency.from(USD)))
+        .thenReturn(Optional.of(price));
 
-    var expectedPrice =
-        Price.create(
-            Id.fromString(PRICE_ID),
-            Id.fromString(PRODUCT_ID),
-            new Money(AMOUNT, Currency.from(USD)),
-            new ValidityPeriod(INIT_DATE, END_DATE));
+    var response = controller.getActivePrice(PRODUCT_ID, QUERY_DATE_STR, USD);
 
-    when(priceRepository.findActivePrice(Id.fromString(PRODUCT_ID), QUERY_DATE, Currency.from(USD)))
-        .thenReturn(Optional.of(expectedPrice));
-
-    Optional<Price> actualPrice = useCase.execute(query);
-
-    assertThat(actualPrice).contains(expectedPrice);
+    assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+    assertThat(response.getBody()).isEqualTo(new GetActivePriceResponse(AMOUNT, USD));
   }
 
   @ParameterizedTest
   @NullAndEmptySource
   @ValueSource(strings = {"   "})
   void returnActivePriceForProductAndDateWithDefaultCurrencyWhenOmittedOrBlank(String rawCurrency) {
-    var query = aQueryWithCurrency(rawCurrency);
+    var price = aPrice(EUR);
+    when(activePriceReader.findActivePrice(Id.fromString(PRODUCT_ID), QUERY_DATE, Currency.DEFAULT))
+        .thenReturn(Optional.of(price));
 
-    var expectedPrice =
-        Price.create(
-            Id.fromString(PRICE_ID),
-            Id.fromString(PRODUCT_ID),
-            new Money(AMOUNT, Currency.DEFAULT),
-            new ValidityPeriod(INIT_DATE, END_DATE));
+    var response = controller.getActivePrice(PRODUCT_ID, QUERY_DATE_STR, rawCurrency);
 
-    when(priceRepository.findActivePrice(Id.fromString(PRODUCT_ID), QUERY_DATE, Currency.DEFAULT))
-        .thenReturn(Optional.of(expectedPrice));
-
-    Optional<Price> actualPrice = useCase.execute(query);
-
-    assertThat(actualPrice).contains(expectedPrice);
+    assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+    assertThat(response.getBody()).isEqualTo(new GetActivePriceResponse(AMOUNT, EUR));
   }
 
   @Test
-  void returnEmptyWhenNoActivePriceFound() {
-    var query = aValidQuery();
-
-    when(priceRepository.findActivePrice(Id.fromString(PRODUCT_ID), QUERY_DATE, Currency.DEFAULT))
+  void returnNotFoundWhenNoActivePriceFound() {
+    when(activePriceReader.findActivePrice(Id.fromString(PRODUCT_ID), QUERY_DATE, Currency.DEFAULT))
         .thenReturn(Optional.empty());
 
-    Optional<Price> actualPrice = useCase.execute(query);
+    var response = controller.getActivePrice(PRODUCT_ID, QUERY_DATE_STR, null);
 
-    assertThat(actualPrice).isEmpty();
+    assertThat(response.getStatusCode().value()).isEqualTo(404);
+    assertThat(response.getBody()).isNull();
   }
 
   @Test
   void failWhenProductIdIsNotUuidV7() {
-    var query = aQueryWithProductId(INVALID_UUID);
-
-    assertThatThrownBy(() -> useCase.execute(query))
+    assertThatThrownBy(() -> controller.getActivePrice(INVALID_UUID, QUERY_DATE_STR, EUR))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(ERROR_UUID_V7);
 
-    verifyNoInteractions(priceRepository);
+    verifyNoInteractions(activePriceReader);
   }
 
   @ParameterizedTest
   @NullAndEmptySource
   @ValueSource(strings = {"   "})
   void failWhenProductIdIsBlankOrNull(String invalidId) {
-    var query = aQueryWithProductId(invalidId);
-
-    assertThatThrownBy(() -> useCase.execute(query))
+    assertThatThrownBy(() -> controller.getActivePrice(invalidId, QUERY_DATE_STR, EUR))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(ERROR_ID_BLANK);
 
-    verifyNoInteractions(priceRepository);
+    verifyNoInteractions(activePriceReader);
   }
 
   @ParameterizedTest
   @NullAndEmptySource
   @ValueSource(strings = {"   "})
   void failWhenDateIsBlankOrNull(String invalidDate) {
-    var query = aQueryWithDate(invalidDate);
-
-    assertThatThrownBy(() -> useCase.execute(query))
+    assertThatThrownBy(() -> controller.getActivePrice(PRODUCT_ID, invalidDate, EUR))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(ERROR_DATE_BLANK);
 
-    verifyNoInteractions(priceRepository);
+    verifyNoInteractions(activePriceReader);
   }
 
   @ParameterizedTest
   @ValueSource(strings = {"invalid-date", "2024/04/15", "15-04-2024", "2024-13-01"})
   void failWhenDateFormatIsInvalid(String invalidDate) {
-    var query = aQueryWithDate(invalidDate);
-
-    assertThatThrownBy(() -> useCase.execute(query))
+    assertThatThrownBy(() -> controller.getActivePrice(PRODUCT_ID, invalidDate, EUR))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(ERROR_DATE_FORMAT);
 
-    verifyNoInteractions(priceRepository);
+    verifyNoInteractions(activePriceReader);
   }
 
   @ParameterizedTest
   @ValueSource(strings = {"INVALID", "US", "EURO", "123"})
   void failWhenCurrencyIsInvalid(String invalidCurrency) {
-    var query = aQueryWithCurrency(invalidCurrency);
-
-    assertThatThrownBy(() -> useCase.execute(query))
+    assertThatThrownBy(() -> controller.getActivePrice(PRODUCT_ID, QUERY_DATE_STR, invalidCurrency))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(ERROR_CURRENCY_ISO);
 
-    verifyNoInteractions(priceRepository);
+    verifyNoInteractions(activePriceReader);
   }
 
-  private static GetActivePriceQuery aValidQuery() {
-    return new GetActivePriceQuery(PRODUCT_ID, QUERY_DATE_STR, EUR);
-  }
-
-  private static GetActivePriceQuery aQueryWithProductId(String productId) {
-    return new GetActivePriceQuery(productId, QUERY_DATE_STR, EUR);
-  }
-
-  private static GetActivePriceQuery aQueryWithDate(String date) {
-    return new GetActivePriceQuery(PRODUCT_ID, date, EUR);
-  }
-
-  private static GetActivePriceQuery aQueryWithCurrency(String currency) {
-    return new GetActivePriceQuery(PRODUCT_ID, QUERY_DATE_STR, currency);
+  private static Price aPrice(String currency) {
+    return Price.create(
+        Id.fromString(PRICE_ID),
+        Id.fromString(PRODUCT_ID),
+        new Money(AMOUNT, Currency.from(currency)),
+        new ValidityPeriod(INIT_DATE, END_DATE));
   }
 }

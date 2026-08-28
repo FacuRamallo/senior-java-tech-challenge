@@ -2,7 +2,6 @@ package com.mango.products.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -14,7 +13,10 @@ import com.mango.products.domain.Price;
 import com.mango.products.domain.PriceRepository;
 import com.mango.products.domain.ValidityPeriod;
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,8 +38,12 @@ class UpdatePriceUseCaseShould {
   private static final BigDecimal AMOUNT = new BigDecimal("149.99");
   private static final String EUR = "EUR";
   private static final String USD = "USD";
-  private static final LocalDate INIT_DATE = LocalDate.of(2024, 7, 1);
-  private static final LocalDate END_DATE = LocalDate.of(2024, 12, 31);
+  private static final Instant FIXED_NOW = Instant.parse("2024-04-15T12:00:00Z");
+  private static final Clock FIXED_CLOCK = Clock.fixed(FIXED_NOW, ZoneId.of("UTC"));
+  private static final LocalDate ACTIVE_INIT_DATE = LocalDate.of(2024, 1, 1);
+  private static final LocalDate ACTIVE_END_DATE = LocalDate.of(2024, 6, 30);
+  private static final LocalDate NEW_INIT_DATE = LocalDate.of(2024, 1, 1);
+  private static final LocalDate NEW_END_DATE = LocalDate.of(2024, 8, 31);
 
   private static final String ERROR_UUID_V7 = "Id must be a valid UUIDv7";
   private static final String ERROR_ID_BLANK = "Id must not be blank";
@@ -45,6 +51,7 @@ class UpdatePriceUseCaseShould {
   private static final String ERROR_CURRENCY_ISO = "Currency must be a valid ISO-4217 code";
   private static final String ERROR_INIT_DATE_NULL = "Init date must not be null";
   private static final String ERROR_INIT_DATE_BEFORE_END = "Init date must be before end date";
+  private static final String ERROR_NOT_ACTIVE = "Only currently active prices can be updated";
 
   @Mock private PriceRepository priceRepository;
   @Captor private ArgumentCaptor<Price> priceCaptor;
@@ -53,14 +60,16 @@ class UpdatePriceUseCaseShould {
 
   @BeforeEach
   void setUp() {
-    useCase = new UpdatePriceUseCase(priceRepository);
+    useCase = new UpdatePriceUseCase(priceRepository, FIXED_CLOCK);
   }
 
   @Test
-  void updateAndPersistPriceWithExplicitCurrency() {
-    var command = aCommandWithCurrency(USD);
-    when(priceRepository.update(any(Price.class))).thenReturn(true);
+  void updateAndPersistPriceWithExplicitCurrencyWhenCurrentlyActive() {
+    var existingActivePrice = anExistingPrice(EUR, ACTIVE_INIT_DATE, ACTIVE_END_DATE);
+    when(priceRepository.findById(Id.fromString(PRICE_ID), Id.fromString(PRODUCT_ID)))
+        .thenReturn(Optional.of(existingActivePrice));
 
+    var command = aCommandWithCurrency(USD);
     Optional<Price> updated = useCase.execute(command);
 
     var expectedPrice =
@@ -68,7 +77,7 @@ class UpdatePriceUseCaseShould {
             Id.fromString(PRICE_ID),
             Id.fromString(PRODUCT_ID),
             new Money(AMOUNT, Currency.from(USD)),
-            new ValidityPeriod(INIT_DATE, END_DATE));
+            new ValidityPeriod(NEW_INIT_DATE, NEW_END_DATE));
 
     assertThat(updated).isPresent();
     assertThat(updated.get()).usingRecursiveComparison().isEqualTo(expectedPrice);
@@ -81,9 +90,11 @@ class UpdatePriceUseCaseShould {
   @NullAndEmptySource
   @ValueSource(strings = {"   "})
   void updateAndPersistPriceWithDefaultCurrencyWhenOmittedOrBlank(String rawCurrency) {
-    var command = aCommandWithCurrency(rawCurrency);
-    when(priceRepository.update(any(Price.class))).thenReturn(true);
+    var existingActivePrice = anExistingPrice(EUR, ACTIVE_INIT_DATE, ACTIVE_END_DATE);
+    when(priceRepository.findById(Id.fromString(PRICE_ID), Id.fromString(PRODUCT_ID)))
+        .thenReturn(Optional.of(existingActivePrice));
 
+    var command = aCommandWithCurrency(rawCurrency);
     Optional<Price> updated = useCase.execute(command);
 
     var expectedPrice =
@@ -91,7 +102,7 @@ class UpdatePriceUseCaseShould {
             Id.fromString(PRICE_ID),
             Id.fromString(PRODUCT_ID),
             new Money(AMOUNT, Currency.DEFAULT),
-            new ValidityPeriod(INIT_DATE, END_DATE));
+            new ValidityPeriod(NEW_INIT_DATE, NEW_END_DATE));
 
     assertThat(updated).isPresent();
     assertThat(updated.get()).usingRecursiveComparison().isEqualTo(expectedPrice);
@@ -102,13 +113,26 @@ class UpdatePriceUseCaseShould {
 
   @Test
   void returnEmptyOptionalWhenPriceToUpdateDoesNotExist() {
-    var command = aCommandWithCurrency(EUR);
-    when(priceRepository.update(any(Price.class))).thenReturn(false);
+    when(priceRepository.findById(Id.fromString(PRICE_ID), Id.fromString(PRODUCT_ID)))
+        .thenReturn(Optional.empty());
 
+    var command = aCommandWithCurrency(EUR);
     Optional<Price> updated = useCase.execute(command);
 
     assertThat(updated).isEmpty();
-    verify(priceRepository).update(any(Price.class));
+  }
+
+  @Test
+  void failWhenPriceIsNotCurrentlyActive() {
+    var pastPrice = anExistingPrice(EUR, LocalDate.of(2023, 1, 1), LocalDate.of(2023, 12, 31));
+    when(priceRepository.findById(Id.fromString(PRICE_ID), Id.fromString(PRODUCT_ID)))
+        .thenReturn(Optional.of(pastPrice));
+
+    var command = aCommandWithCurrency(EUR);
+
+    assertThatThrownBy(() -> useCase.execute(command))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(ERROR_NOT_ACTIVE);
   }
 
   @Test
@@ -196,7 +220,7 @@ class UpdatePriceUseCaseShould {
 
   @Test
   void failWhenInitDateIsNull() {
-    var command = aCommandWithDates(null, END_DATE);
+    var command = aCommandWithDates(null, NEW_END_DATE);
 
     assertThatThrownBy(() -> useCase.execute(command))
         .isInstanceOf(IllegalArgumentException.class)
@@ -207,7 +231,7 @@ class UpdatePriceUseCaseShould {
 
   @Test
   void failWhenInitDateIsAfterEndDate() {
-    var command = aCommandWithDates(END_DATE, INIT_DATE);
+    var command = aCommandWithDates(NEW_END_DATE, NEW_INIT_DATE);
 
     assertThatThrownBy(() -> useCase.execute(command))
         .isInstanceOf(IllegalArgumentException.class)
@@ -218,7 +242,7 @@ class UpdatePriceUseCaseShould {
 
   @Test
   void failWhenInitDateIsEqualEndDate() {
-    var command = aCommandWithDates(END_DATE, END_DATE);
+    var command = aCommandWithDates(NEW_END_DATE, NEW_END_DATE);
 
     assertThatThrownBy(() -> useCase.execute(command))
         .isInstanceOf(IllegalArgumentException.class)
@@ -227,20 +251,29 @@ class UpdatePriceUseCaseShould {
     verifyNoInteractions(priceRepository);
   }
 
+  private static Price anExistingPrice(String currency, LocalDate initDate, LocalDate endDate) {
+    return Price.create(
+        Id.fromString(PRICE_ID),
+        Id.fromString(PRODUCT_ID),
+        new Money(new BigDecimal("99.99"), Currency.from(currency)),
+        new ValidityPeriod(initDate, endDate));
+  }
+
   private static UpdatePriceCommand aCommandWithPriceId(String priceId) {
-    return new UpdatePriceCommand(priceId, PRODUCT_ID, AMOUNT, EUR, INIT_DATE, END_DATE);
+    return new UpdatePriceCommand(priceId, PRODUCT_ID, AMOUNT, EUR, NEW_INIT_DATE, NEW_END_DATE);
   }
 
   private static UpdatePriceCommand aCommandWithProductId(String productId) {
-    return new UpdatePriceCommand(PRICE_ID, productId, AMOUNT, EUR, INIT_DATE, END_DATE);
+    return new UpdatePriceCommand(PRICE_ID, productId, AMOUNT, EUR, NEW_INIT_DATE, NEW_END_DATE);
   }
 
   private static UpdatePriceCommand aCommandWithAmount(BigDecimal amount) {
-    return new UpdatePriceCommand(PRICE_ID, PRODUCT_ID, amount, EUR, INIT_DATE, END_DATE);
+    return new UpdatePriceCommand(PRICE_ID, PRODUCT_ID, amount, EUR, NEW_INIT_DATE, NEW_END_DATE);
   }
 
   private static UpdatePriceCommand aCommandWithCurrency(String currency) {
-    return new UpdatePriceCommand(PRICE_ID, PRODUCT_ID, AMOUNT, currency, INIT_DATE, END_DATE);
+    return new UpdatePriceCommand(
+        PRICE_ID, PRODUCT_ID, AMOUNT, currency, NEW_INIT_DATE, NEW_END_DATE);
   }
 
   private static UpdatePriceCommand aCommandWithDates(LocalDate initDate, LocalDate endDate) {

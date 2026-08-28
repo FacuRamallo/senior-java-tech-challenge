@@ -1,15 +1,15 @@
-package com.mango.products.infrastructure.controller;
+package com.mango.products.infrastructure.controller.readmode;
 
 import com.mango.products.domain.Price;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
-public record GetPriceHistoryResponse(
+public record PriceHistoryItemResponse(
     UUID id, BigDecimal value, String currency, LocalDate initDate, LocalDate endDate) {
 
-  public static GetPriceHistoryResponse from(Price price) {
-    return new GetPriceHistoryResponse(
+  public static PriceHistoryItemResponse from(Price price) {
+    return new PriceHistoryItemResponse(
         price.getId().value(),
         price.getMoney().amount(),
         price.getMoney().currency().value(),

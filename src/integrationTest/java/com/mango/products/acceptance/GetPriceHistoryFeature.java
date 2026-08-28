@@ -50,24 +50,28 @@ public abstract class GetPriceHistoryFeature extends IntegrationTestBase {
 
     String expectedResponseBody =
         """
-        [
-          {
-            "id": "%s",
-            "value": 99.99,
-            "currency": "EUR",
-            "initDate": "2024-01-01",
-            "endDate": "2024-06-30"
-          },
-          {
-            "id": "%s",
-            "value": 149.99,
-            "currency": "EUR",
-            "initDate": "2024-07-01",
-            "endDate": "2024-12-31"
-          }
-        ]
+        {
+          "next": null,
+          "previous": null,
+          "prices": [
+            {
+              "id": "%s",
+              "value": 149.99,
+              "currency": "EUR",
+              "initDate": "2024-07-01",
+              "endDate": "2024-12-31"
+            },
+            {
+              "id": "%s",
+              "value": 99.99,
+              "currency": "EUR",
+              "initDate": "2024-01-01",
+              "endDate": "2024-06-30"
+            }
+          ]
+        }
         """
-            .formatted(priceId1, priceId2);
+            .formatted(priceId2, priceId1);
 
     mockMvc
         .perform(

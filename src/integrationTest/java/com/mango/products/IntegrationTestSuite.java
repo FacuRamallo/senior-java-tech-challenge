@@ -2,7 +2,6 @@ package com.mango.products;
 
 import com.mango.products.acceptance.AddPriceFeature;
 import com.mango.products.acceptance.CreateProductFeature;
-import com.mango.products.acceptance.DeletePriceFeature;
 import com.mango.products.acceptance.GetActivePriceFeature;
 import com.mango.products.acceptance.GetPriceHistoryFeature;
 import com.mango.products.acceptance.UpdatePriceFeature;
@@ -43,9 +42,6 @@ public class IntegrationTestSuite {
 
   @Nested
   class AddPrice extends AddPriceFeature {}
-
-  @Nested
-  class DeletePrice extends DeletePriceFeature {}
 
   @Nested
   class UpdatePrice extends UpdatePriceFeature {}

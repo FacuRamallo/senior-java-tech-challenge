@@ -1,7 +1,5 @@
 package com.mango.products.domain;
 
-import java.time.LocalDate;
-import java.util.List;
 import java.util.Optional;
 
 public interface PriceRepository {
@@ -10,11 +8,7 @@ public interface PriceRepository {
 
   Optional<Price> findById(Id priceId, Id productId);
 
-  boolean deleteById(Id priceId, Id productId);
-
   boolean update(Price price);
 
-  Optional<Price> findActivePrice(Id productId, LocalDate date, Currency currency);
-
-  List<Price> findPriceHistory(Id productId, Currency currency);
+  Optional<Price> findLatestPrice(Id productId, Currency currency);
 }
