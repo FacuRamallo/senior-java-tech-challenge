@@ -1,0 +1,4 @@
+FROM grafana/k6:latest
+WORKDIR /app
+COPY k6/benchmark.js /app/benchmark.js
+ENTRYPOINT ["k6", "run", "/app/benchmark.js"]

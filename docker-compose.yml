@@ -61,3 +61,22 @@ services:
         reservations:
           cpus: '0.25'
           memory: 256M
+
+  k6-benchmark:
+    build:
+      context: .
+      dockerfile: Dockerfile.k6
+    image: product-k6-benchmark:latest
+    container_name: product-k6-benchmark
+    depends_on:
+      - app
+    environment:
+      - BASE_URL=http://product-api:8080
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
