@@ -20,6 +20,7 @@ For detailed architectural justifications and technical decisions, refer to:
 - [ADR-0002: Testing Strategy & Inside-Out TDD State Machine](docs/adr/0002-testing-strategy-and-tdd-state-machine.md)
 - [ADR-0003: Temporal Modeling & PostgreSQL Range Containment](docs/adr/0003-temporal-modeling-and-timezone-architecture.md)
 - [ADR-0004: Price Lifecycle Invariants & Historical Immutability](docs/adr/0004-price-lifecycle-and-historical-immutability.md)
+- [ADR-0005: Case-Insensitive Product Name Uniqueness & Domain Port Conflict Resolution](docs/adr/0005-unique-product-naming-and-conflict-resolution.md)
 - [ADR-0043: Multi-Currency Discrete Pricing & Money Value Object](docs/adr/ADR-0043-multi-currency-discrete-pricing.md)
 - [k6 Load Testing & Resource Tracking Guide](docs/k6-performance-benchmark.md)
 - [Docker Architecture & Multi-Arch Guide](docs/docker-architecture.md)
@@ -66,7 +67,7 @@ java -version
 
 ---
 
-### 3. Docker Compose Execution & Benchmarks
+### 3. Docker Compose Execution & Interactive Exploration
 
 The system uses Ahead-Of-Time (AOT) GraalVM compilation. **Build the container image once**, and then run subsequent executions instantly (~50ms startup time, ~30MB memory).
 
@@ -75,6 +76,29 @@ The system uses Ahead-Of-Time (AOT) GraalVM compilation. **Build the container i
 # Builds the optimized GraalVM native binary inside Docker
 docker compose build
 ```
+
+#### Run App & Database (Background / Development Mode)
+```bash
+# Starts PostgreSQL (db) and Spring Boot Native API (app)
+docker compose up db app -d
+
+# View live application logs
+docker compose logs -f app
+```
+
+#### Seed Test Data (Recommended for Testing)
+Populates the database with 3 sample products and multi-currency price histories:
+```bash
+bash scripts/seed-data.sh
+```
+
+#### Explore Interactively via Swagger UI
+Open your browser and navigate to:
+👉 **[http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)**
+
+---
+
+### 4. Benchmarking & Automated Load Testing
 
 #### Run Reviewer Benchmark (`benchmark.sh`)
 ```bash
@@ -85,16 +109,7 @@ docker compose up --build benchmark --abort-on-container-exit
 #### Run Advanced k6 Benchmark & Resource Tracker
 ```bash
 # Starts PostgreSQL (db), Spring Boot Native API (app), and runs the k6 suite with real-time resource tracking
-docker compose up --build k6-benchmark --abort-on-container-exit
-```
-
-#### Run App & Database Only (Background / Development Mode)
-```bash
-# Starts db and app in the background
-docker compose up db app -d
-
-# View live application logs
-docker compose logs -f app
+docker compose up k6-benchmark --abort-on-container-exit
 ```
 
 #### Stop All Services
@@ -104,13 +119,13 @@ docker compose down -v
 
 ---
 
-### 4. Exploring & Verifying Application Resource Metrics
+### 5. Exploring & Verifying Application Resource Metrics
 
 Reviewers and developers can inspect the application's resource consumption under load through three methods:
 
 #### Method A: Automated k6 Console Report
-Executing `docker compose up --build k6-benchmark --abort-on-container-exit` outputs an automated resource banner alongside k6 metrics:
-- **🚀 Cold Startup Duration**: Measured in milliseconds from boot to `/actuator/health` UP (~45ms).
+Executing `docker compose up k6-benchmark --abort-on-container-exit` outputs an automated resource banner:
+- **🚀 Cold Startup Duration**: Measured from boot to `/actuator/health` UP (~45ms).
 - **💾 Idle Memory vs Peak Memory**: Heap/native RAM used before and under load (~28MB idle to ~45MB peak out of 1024MB limit).
 - **⚡ Process CPU Utilization**: Percentage of container CPU utilized (~55–65% of 1.0 CPU limit).
 - **🧵 Active JVM Threads**: Number of concurrent virtual/carrier threads.
@@ -120,7 +135,6 @@ While running load (`benchmark` or `k6-benchmark`), open a separate terminal win
 ```bash
 docker stats product-api
 ```
-Displays real-time kernel-level CPU %, Memory RSS usage, and Network I/O.
 
 #### Method C: Live Spring Boot Actuator Endpoints
 When the API is running, query metrics directly via HTTP:
@@ -140,7 +154,7 @@ curl -s http://localhost:8080/actuator/metrics/jvm.threads.live
 
 ---
 
-### 5. Local Development & Automated Tests (Gradle)
+### 6. Local Development & Automated Tests (Gradle)
 
 ```bash
 # Run unit tests (Domain & Application Use Cases)
@@ -161,82 +175,150 @@ curl -s http://localhost:8080/actuator/metrics/jvm.threads.live
 
 ---
 
-## 📘 REST API Reference Summary
+## 🧪 Predefined Edge-Case Verification Suite
 
-Full OpenAPI 3.1 specification available in [`docs/openapi.yaml`](docs/openapi.yaml).
+After starting the application (`docker compose up db app -d`) and running `bash scripts/seed-data.sh`, the following pre-seeded products are available:
+- **Product 1** (`01952e42-7a57-7000-8000-000000000001` - *Zapatillas Running Pro*): 3 EUR prices, 2 USD prices.
+- **Product 2** (`01952e42-7a57-7000-8000-000000000002` - *Camiseta DryFit*): Has an active open-ended price (`endDate: null`).
+- **Product 3** (`01952e42-7a57-7000-8000-000000000003` - *Mochila Senderismo*): Fresh product with zero prices.
 
-### 1. Create a Product
-- **Endpoint**: `POST /products`
-- **Request Body**:
-  ```json
-  {
-    "name": "Zapatillas deportivas",
-    "description": "Modelo 2025 edición limitada"
-  }
-  ```
-  *(Optional: `"id": "01952e42-7a57-7000-8000-000000000001"` for client-side UUIDv7 idempotency)*
-- **Response**: `201 Created`
-  - **Header**: `Location: /products/01952e42-7a57-7000-8000-000000000001`
-  - **Body**:
-    ```json
-    {
-      "id": "01952e42-7a57-7000-8000-000000000001",
-      "name": "Zapatillas deportivas",
-      "description": "Modelo 2025 edición limitada"
-    }
-    ```
+You can execute these predefined requests in **Swagger UI** or copy-paste them directly into your terminal:
 
 ---
 
-### 2. Add a Price to a Product
-- **Endpoint**: `POST /products/{id}/prices`
-- **Request Body**:
-  ```json
-  {
-    "value": 99.99,
-    "currency": "EUR",
-    "initDate": "2024-01-01",
-    "endDate": "2024-06-30"
-  }
-  ```
-- **Response**: `201 Created` (`Location: /products/{id}/prices/{priceId}`)
+### 1. Endpoint: `POST /products` (Product Creation)
+
+#### ✅ Happy Path: Create product with auto-generated UUIDv7
+```bash
+curl -i -X POST http://localhost:8080/products \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Gorra Deportiva","description":"Protección UV edición 2026"}'
+# Expected: 201 Created with Location header and generated UUIDv7
+```
+
+#### ❌ Edge Case: Reject blank name
+```bash
+curl -i -X POST http://localhost:8080/products \
+  -H "Content-Type: application/json" \
+  -d '{"name":"   ","description":"Descripción válida"}'
+# Expected: 400 Bad Request (Detail: "Name cannot be blank")
+```
+
+#### ❌ Edge Case: Reject duplicate product name (case-insensitive)
+```bash
+curl -i -X POST http://localhost:8080/products \
+  -H "Content-Type: application/json" \
+  -d '{"name":"gorra deportiva","description":"Variación en minúsculas"}'
+# Expected: 409 Conflict (Detail: "A product with the name 'gorra deportiva' already exists", conflictingProductId: "<existing-uuid>")
+```
+
+#### ❌ Edge Case: Reject duplicate client-specified UUIDv7
+```bash
+curl -i -X POST http://localhost:8080/products \
+  -H "Content-Type: application/json" \
+  -d '{"id":"01952e42-7a57-7000-8000-000000000001","name":"Duplicado","description":"Test"}'
+# Expected: 409 Conflict (Product already exists)
+```
 
 ---
 
-### 3. Get Active Price on Date
-- **Endpoint**: `GET /products/{id}/prices?date=2024-03-15&currency=EUR`
-- **Response**: `200 OK`
-  ```json
-  {
-    "value": 99.99,
-    "currency": "EUR"
-  }
-  ```
+### 2. Endpoint: `POST /products/{id}/prices` (Sequential Price Registration)
+
+#### ✅ Happy Path: Add valid sequential price on Product 1 (after last endDate 2026-12-31)
+```bash
+curl -i -X POST http://localhost:8080/products/01952e42-7a57-7000-8000-000000000001/prices \
+  -H "Content-Type: application/json" \
+  -d '{"value":229.99,"currency":"EUR","initDate":"2027-01-01","endDate":"2027-12-31"}'
+# Expected: 201 Created with Location header
+```
+
+#### ❌ Edge Case: Reject creation when previous price is open-ended (Product 2)
+```bash
+curl -i -X POST http://localhost:8080/products/01952e42-7a57-7000-8000-000000000002/prices \
+  -H "Content-Type: application/json" \
+  -d '{"value":59.99,"currency":"EUR","initDate":"2027-01-01","endDate":"2027-12-31"}'
+# Expected: 400 Bad Request (Detail: "Cannot add a new price while the latest price has an open-ended validity period")
+```
+
+#### ❌ Edge Case: Reject non-sequential / past overlapping interval on Product 1
+```bash
+curl -i -X POST http://localhost:8080/products/01952e42-7a57-7000-8000-000000000001/prices \
+  -H "Content-Type: application/json" \
+  -d '{"value":99.99,"currency":"EUR","initDate":"2024-03-01","endDate":"2024-05-01"}'
+# Expected: 400 Bad Request (Detail: "New price init date must be strictly after the latest price end date")
+```
 
 ---
 
-### 4. Get Paginated Price History
-- **Endpoint**: `GET /products/{id}/prices?currency=EUR&pageSize=20&sortOrder=DESC`
-- **Response**: `200 OK`
-  ```json
-  {
-    "next": "/products/01952e42-7a57-7000-8000-000000000001/prices?currency=EUR&cursor=MjAyNC0wMS0wMQ&pageSize=20&sortOrder=DESC",
-    "previous": null,
-    "prices": [
-      {
-        "id": "01952e42-7a57-7000-8000-000000000003",
-        "value": 149.99,
-        "currency": "EUR",
-        "initDate": "2024-07-01",
-        "endDate": "2024-12-31"
-      },
-      {
-        "id": "01952e42-7a57-7000-8000-000000000002",
-        "value": 99.99,
-        "currency": "EUR",
-        "initDate": "2024-01-01",
-        "endDate": "2024-06-30"
-      }
-    ]
-  }
-  ```
+### 3. Endpoint: `GET /products/{id}/prices?date=...` (Active Price Resolution)
+
+#### ✅ Happy Path: Query active price on historical date in EUR (Product 1)
+```bash
+curl -i "http://localhost:8080/products/01952e42-7a57-7000-8000-000000000001/prices?date=2024-04-15&currency=EUR"
+# Expected: 200 OK -> {"value": 99.99, "currency": "EUR"}
+```
+
+#### ✅ Happy Path: Query active price on multi-currency USD (Product 1)
+```bash
+curl -i "http://localhost:8080/products/01952e42-7a57-7000-8000-000000000001/prices?date=2024-04-15&currency=USD"
+# Expected: 200 OK -> {"value": 109.99, "currency": "USD"}
+```
+
+#### ✅ Happy Path: Query open-ended active price (Product 2)
+```bash
+curl -i "http://localhost:8080/products/01952e42-7a57-7000-8000-000000000002/prices?date=2026-08-29&currency=EUR"
+# Expected: 200 OK -> {"value": 49.99, "currency": "EUR"}
+```
+
+#### ❌ Edge Case: Date with no active price configured
+```bash
+curl -i "http://localhost:8080/products/01952e42-7a57-7000-8000-000000000001/prices?date=2020-01-01&currency=EUR"
+# Expected: 404 Not Found
+```
+
+#### ❌ Edge Case: Malformed date format
+```bash
+curl -i "http://localhost:8080/products/01952e42-7a57-7000-8000-000000000001/prices?date=2024/13/45"
+# Expected: 400 Bad Request
+```
+
+---
+
+### 4. Endpoint: `PUT /products/{id}/prices/{priceId}` (Active Price Updating)
+
+#### ❌ Edge Case: Reject updating past / non-active historical price
+```bash
+# Attempt to update Product 1's 2024 price (assuming today is in 2025/2026)
+curl -i -X PUT http://localhost:8080/products/01952e42-7a57-7000-8000-000000000001/prices/01952e42-7a57-7000-8000-000000000011 \
+  -H "Content-Type: application/json" \
+  -d '{"value":119.99,"currency":"EUR","initDate":"2024-01-01","endDate":"2024-06-30"}'
+# Expected: 400 Bad Request or 404 (Detail: "Only currently active prices can be updated")
+```
+
+---
+
+### 5. Endpoint: `GET /products/{id}/prices` (Price History & Keyset Pagination)
+
+#### ✅ Happy Path: Fetch chronological history ordered newest first (DESC)
+```bash
+curl -i "http://localhost:8080/products/01952e42-7a57-7000-8000-000000000001/prices?currency=EUR&pageSize=20&sortOrder=DESC"
+# Expected: 200 OK with envelope {"next": null, "previous": null, "prices": [...3 items sorted DESC by initDate...]}
+```
+
+#### ✅ Happy Path: Fetch chronological history ordered oldest first (ASC)
+```bash
+curl -i "http://localhost:8080/products/01952e42-7a57-7000-8000-000000000001/prices?currency=EUR&pageSize=20&sortOrder=ASC"
+# Expected: 200 OK with envelope {"next": null, "previous": null, "prices": [...3 items sorted ASC by initDate...]}
+```
+
+#### ❌ Edge Case: Reject invalid Base64 pagination cursor
+```bash
+curl -i "http://localhost:8080/products/01952e42-7a57-7000-8000-000000000001/prices?cursor=not-a-valid-base64!"
+# Expected: 400 Bad Request
+```
+
+#### ❌ Edge Case: Reject oversized page size (> 100)
+```bash
+curl -i "http://localhost:8080/products/01952e42-7a57-7000-8000-000000000001/prices?pageSize=101"
+# Expected: 400 Bad Request (Detail: "PageSize must not exceed 100")
+```

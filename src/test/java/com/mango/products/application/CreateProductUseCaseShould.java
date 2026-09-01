@@ -2,16 +2,20 @@ package com.mango.products.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.mango.products.domain.Description;
+import com.mango.products.domain.DuplicateProductNameException;
 import com.mango.products.domain.Id;
 import com.mango.products.domain.IdGenerator;
 import com.mango.products.domain.Name;
 import com.mango.products.domain.Product;
 import com.mango.products.domain.ProductRepository;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -120,6 +124,24 @@ class CreateProductUseCaseShould {
 
     verifyNoInteractions(productRepository);
     verifyNoInteractions(idGenerator);
+  }
+
+  @Test
+  void failWhenProductNameAlreadyExists() {
+    var command = new CreateProductCommand(PRODUCT_ID, NAME, DESCRIPTION);
+    var conflictingId = Id.fromString("01952e42-7a57-7000-8000-000000000099");
+    doThrow(new DuplicateProductNameException(new Name(NAME)))
+        .when(productRepository)
+        .save(any(Product.class));
+    when(productRepository.findConflictingProductId(new Name(NAME)))
+        .thenReturn(Optional.of(conflictingId));
+
+    assertThatThrownBy(() -> useCase.execute(command))
+        .isInstanceOf(DuplicateProductNameException.class)
+        .usingRecursiveComparison()
+        .isEqualTo(new DuplicateProductNameException(conflictingId, new Name(NAME)));
+
+    verify(productRepository).findConflictingProductId(new Name(NAME));
   }
 
   private static CreateProductCommand aCommandWithId(String id) {

@@ -32,7 +32,7 @@ public abstract class UpdatePriceFeature extends IntegrationTestBase {
     var product =
         Product.create(
             new Id(productId),
-            new Name("Zapatillas deportivas"),
+            new Name("Zapatillas de baloncesto"),
             new Description("Modelo 2025 edición limitada"));
     productRepository.save(product);
 

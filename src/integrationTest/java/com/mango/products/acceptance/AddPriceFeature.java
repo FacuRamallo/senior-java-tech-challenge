@@ -25,7 +25,7 @@ public abstract class AddPriceFeature extends IntegrationTestBase {
     var product =
         Product.create(
             new Id(productId),
-            new Name("Zapatillas deportivas"),
+            new Name("Zapatillas de tenis"),
             new Description("Modelo 2025 edición limitada"));
     productRepository.save(product);
 

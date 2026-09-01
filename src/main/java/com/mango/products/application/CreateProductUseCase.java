@@ -1,6 +1,7 @@
 package com.mango.products.application;
 
 import com.mango.products.domain.Description;
+import com.mango.products.domain.DuplicateProductNameException;
 import com.mango.products.domain.Id;
 import com.mango.products.domain.IdGenerator;
 import com.mango.products.domain.Name;
@@ -24,7 +25,12 @@ public class CreateProductUseCase {
     var name = new Name(command.name());
     var description = new Description(command.description());
     var product = Product.create(id, name, description);
-    productRepository.save(product);
+    try {
+      productRepository.save(product);
+    } catch (DuplicateProductNameException ex) {
+      var conflictingId = productRepository.findConflictingProductId(name).orElse(id);
+      throw new DuplicateProductNameException(conflictingId, name);
+    }
     return product;
   }
 }
