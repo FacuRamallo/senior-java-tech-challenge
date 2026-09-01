@@ -1,5 +1,7 @@
 package com.mango.products.application;
 
+import com.mango.products.domain.DomainException.NonSequentialPriceDateException;
+import com.mango.products.domain.DomainException.OpenEndedPriceConflictException;
 import com.mango.products.domain.Id;
 import com.mango.products.domain.Money;
 import com.mango.products.domain.Price;
@@ -24,12 +26,10 @@ public class AddPriceToProductUseCase {
     if (latestPrice.isPresent()) {
       var latestPriceValidityPeriod = latestPrice.get().getValidityPeriod();
       if (latestPriceValidityPeriod.hasOpenEndedEndDate()) {
-        throw new IllegalArgumentException(
-            "Cannot create a new price while the current price has an open-ended end date");
+        throw new OpenEndedPriceConflictException();
       }
       if (!validityPeriod.initDate().isAfter(latestPriceValidityPeriod.endDate())) {
-        throw new IllegalArgumentException(
-            "New price init date must be after the last price end date");
+        throw new NonSequentialPriceDateException();
       }
     }
 

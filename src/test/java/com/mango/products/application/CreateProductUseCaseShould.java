@@ -9,7 +9,10 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.mango.products.domain.Description;
-import com.mango.products.domain.DuplicateProductNameException;
+import com.mango.products.domain.DomainException.BlankDescriptionException;
+import com.mango.products.domain.DomainException.BlankNameException;
+import com.mango.products.domain.DomainException.DuplicateProductNameException;
+import com.mango.products.domain.DomainException.InvalidUuidV7Exception;
 import com.mango.products.domain.Id;
 import com.mango.products.domain.IdGenerator;
 import com.mango.products.domain.Name;
@@ -91,7 +94,7 @@ class CreateProductUseCaseShould {
     var command = aCommandWithId(INVALID_UUID);
 
     assertThatThrownBy(() -> useCase.execute(command))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(InvalidUuidV7Exception.class)
         .hasMessage(ERROR_UUID_V7);
 
     verifyNoInteractions(productRepository);
@@ -105,7 +108,7 @@ class CreateProductUseCaseShould {
     var command = aCommandWithName(invalidName);
 
     assertThatThrownBy(() -> useCase.execute(command))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(BlankNameException.class)
         .hasMessage(ERROR_NAME_BLANK);
 
     verifyNoInteractions(productRepository);
@@ -119,7 +122,7 @@ class CreateProductUseCaseShould {
     var command = aCommandWithDescription(invalidDescription);
 
     assertThatThrownBy(() -> useCase.execute(command))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(BlankDescriptionException.class)
         .hasMessage(ERROR_DESCRIPTION_BLANK);
 
     verifyNoInteractions(productRepository);

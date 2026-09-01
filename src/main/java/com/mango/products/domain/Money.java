@@ -1,5 +1,6 @@
 package com.mango.products.domain;
 
+import com.mango.products.domain.DomainException.AmountMustBePositiveException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
@@ -19,7 +20,7 @@ public record Money(BigDecimal amount, Currency currency) {
 
   private static void validateAmount(BigDecimal amount) {
     if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-      throw new IllegalArgumentException("Amount must be greater than zero");
+      throw new AmountMustBePositiveException();
     }
   }
 }

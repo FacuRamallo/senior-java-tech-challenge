@@ -1,4 +1,4 @@
-package com.mango.products.infrastructure.repository;
+package com.mango.products.infrastructure.repository.readmode;
 
 import com.mango.products.domain.Currency;
 import com.mango.products.domain.Id;

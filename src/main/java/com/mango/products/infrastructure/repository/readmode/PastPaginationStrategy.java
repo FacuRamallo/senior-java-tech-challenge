@@ -1,16 +1,17 @@
-package com.mango.products.infrastructure.repository;
+package com.mango.products.infrastructure.repository.readmode;
 
 import java.sql.Date;
 import java.sql.Types;
 import java.time.LocalDate;
+
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 
-public class FuturePaginationStrategy implements PaginationStrategy {
+public class PastPaginationStrategy implements PaginationStrategy {
 
   private final LocalDate from;
   private final int lookAheadLimit;
 
-  public FuturePaginationStrategy(LocalDate from, int lookAheadLimit) {
+  public PastPaginationStrategy(LocalDate from, int lookAheadLimit) {
     this.from = from;
     this.lookAheadLimit = lookAheadLimit;
   }
@@ -28,8 +29,8 @@ public class FuturePaginationStrategy implements PaginationStrategy {
         FROM product_prices
         WHERE product_id = :productId
           AND price_currency = :priceCurrency
-          AND (:from::date IS NULL OR init_date > :from::date)
-        ORDER BY init_date ASC
+          AND (:from::date IS NULL OR init_date < :from::date)
+        ORDER BY init_date DESC
         LIMIT :pageSize
         """;
   }
@@ -42,6 +43,6 @@ public class FuturePaginationStrategy implements PaginationStrategy {
 
   @Override
   public CursorDirection getDirection() {
-    return CursorDirection.FUTURE;
+    return CursorDirection.PAST;
   }
 }

@@ -1,6 +1,7 @@
 package com.mango.products.infrastructure.repository;
 
 import com.mango.products.domain.Currency;
+import com.mango.products.domain.DomainException.PriceValidityOverlapException;
 import com.mango.products.domain.Id;
 import com.mango.products.domain.Money;
 import com.mango.products.domain.Price;
@@ -11,6 +12,7 @@ import java.sql.Types;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -59,7 +61,14 @@ public class PostgreSqlPriceRepository implements PriceRepository {
                     : null,
                 Types.DATE);
 
-    jdbcTemplate.update(sql, params);
+    try {
+      jdbcTemplate.update(sql, params);
+    } catch (DataIntegrityViolationException ex) {
+      if (isPriceOverlapViolation(ex)) {
+        throw new PriceValidityOverlapException();
+      }
+      throw ex;
+    }
   }
 
   @Override
@@ -129,8 +138,15 @@ public class PostgreSqlPriceRepository implements PriceRepository {
                     : null,
                 Types.DATE);
 
-    int rows = jdbcTemplate.update(sql, params);
-    return rows > 0;
+    try {
+      int rows = jdbcTemplate.update(sql, params);
+      return rows > 0;
+    } catch (DataIntegrityViolationException ex) {
+      if (isPriceOverlapViolation(ex)) {
+        throw new PriceValidityOverlapException();
+      }
+      throw ex;
+    }
   }
 
   @Override
@@ -172,5 +188,11 @@ public class PostgreSqlPriceRepository implements PriceRepository {
             });
 
     return results.stream().findFirst();
+  }
+
+  private boolean isPriceOverlapViolation(DataIntegrityViolationException ex) {
+    String message = ex.getMessage();
+    return message != null
+        && (message.contains("ex_product_currency_validity") || message.contains("23P01"));
   }
 }

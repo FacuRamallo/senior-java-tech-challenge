@@ -1,4 +1,4 @@
-package com.mango.products.infrastructure.repository;
+package com.mango.products.infrastructure.repository.readmode;
 
 import com.mango.products.domain.Currency;
 import com.mango.products.domain.Id;
@@ -7,6 +7,7 @@ import com.mango.products.domain.Price;
 import com.mango.products.domain.ValidityPeriod;
 import java.util.List;
 import java.util.UUID;
+
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;

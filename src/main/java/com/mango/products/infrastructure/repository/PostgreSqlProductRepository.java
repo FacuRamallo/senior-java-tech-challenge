@@ -1,6 +1,6 @@
 package com.mango.products.infrastructure.repository;
 
-import com.mango.products.domain.DuplicateProductNameException;
+import com.mango.products.domain.DomainException.DuplicateProductNameException;
 import com.mango.products.domain.Id;
 import com.mango.products.domain.Name;
 import com.mango.products.domain.Product;

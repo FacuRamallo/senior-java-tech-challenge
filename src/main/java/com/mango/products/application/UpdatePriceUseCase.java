@@ -1,5 +1,6 @@
 package com.mango.products.application;
 
+import com.mango.products.domain.DomainException.InactivePriceUpdateException;
 import com.mango.products.domain.Id;
 import com.mango.products.domain.Money;
 import com.mango.products.domain.Price;
@@ -30,8 +31,8 @@ public class UpdatePriceUseCase {
       return Optional.empty();
     }
 
-    if (!existingPrice.get().getValidityPeriod().contains(LocalDate.now(clock))) {
-      throw new IllegalArgumentException("Only currently active prices can be updated");
+    if (!existingPrice.get().getValidityPeriod().isActive(LocalDate.now(clock))) {
+      throw new InactivePriceUpdateException();
     }
 
     var price = Price.create(priceId, productId, money, validityPeriod);

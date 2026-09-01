@@ -9,6 +9,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.mango.products.domain.Currency;
+import com.mango.products.domain.DomainException.BlankIdException;
+import com.mango.products.domain.DomainException.InvalidCurrencyCodeException;
+import com.mango.products.domain.DomainException.InvalidUuidV7Exception;
 import com.mango.products.domain.Id;
 import com.mango.products.domain.Money;
 import com.mango.products.domain.Price;
@@ -17,8 +20,8 @@ import com.mango.products.infrastructure.controller.readmode.GetPriceHistoryCont
 import com.mango.products.infrastructure.controller.readmode.PriceHistoryItemResponse;
 import com.mango.products.infrastructure.controller.readmode.PriceHistoryResponseAssembler;
 import com.mango.products.infrastructure.controller.readmode.PriceHistoryUrlBuilder;
-import com.mango.products.infrastructure.repository.PaginationStrategy;
-import com.mango.products.infrastructure.repository.PriceHistoryReader;
+import com.mango.products.infrastructure.repository.readmode.PaginationStrategy;
+import com.mango.products.infrastructure.repository.readmode.PriceHistoryReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -338,7 +341,7 @@ class GetPriceHistoryControllerShould {
   @Test
   void failWhenProductIdIsNotUuidV7() {
     assertThatThrownBy(() -> controller.getPriceHistory(INVALID_UUID, EUR, DESC, null, null, 20))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(InvalidUuidV7Exception.class)
         .hasMessage(ERROR_UUID_V7);
 
     verifyNoInteractions(priceHistoryReader);
@@ -349,7 +352,7 @@ class GetPriceHistoryControllerShould {
   @ValueSource(strings = {"   "})
   void failWhenProductIdIsBlankOrNull(String invalidId) {
     assertThatThrownBy(() -> controller.getPriceHistory(invalidId, EUR, DESC, null, null, 20))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(BlankIdException.class)
         .hasMessage(ERROR_ID_BLANK);
 
     verifyNoInteractions(priceHistoryReader);
@@ -360,7 +363,7 @@ class GetPriceHistoryControllerShould {
   void failWhenCurrencyIsInvalid(String invalidCurrency) {
     assertThatThrownBy(
             () -> controller.getPriceHistory(PRODUCT_ID, invalidCurrency, DESC, null, null, 20))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(InvalidCurrencyCodeException.class)
         .hasMessage(ERROR_CURRENCY_ISO);
 
     verifyNoInteractions(priceHistoryReader);

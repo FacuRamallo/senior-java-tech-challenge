@@ -8,6 +8,14 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.mango.products.domain.Currency;
+import com.mango.products.domain.DomainException.AmountMustBePositiveException;
+import com.mango.products.domain.DomainException.BlankIdException;
+import com.mango.products.domain.DomainException.InitDateNotBeforeEndDateException;
+import com.mango.products.domain.DomainException.InvalidCurrencyCodeException;
+import com.mango.products.domain.DomainException.InvalidUuidV7Exception;
+import com.mango.products.domain.DomainException.NonSequentialPriceDateException;
+import com.mango.products.domain.DomainException.NullInitDateException;
+import com.mango.products.domain.DomainException.OpenEndedPriceConflictException;
 import com.mango.products.domain.Id;
 import com.mango.products.domain.Money;
 import com.mango.products.domain.Price;
@@ -147,7 +155,7 @@ class AddPriceToProductUseCaseShould {
     var command = aCommandWithDates(INIT_DATE, END_DATE);
 
     assertThatThrownBy(() -> useCase.execute(command))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(OpenEndedPriceConflictException.class)
         .hasMessage(ERROR_OPEN_ENDED_PRICE);
   }
 
@@ -166,7 +174,7 @@ class AddPriceToProductUseCaseShould {
     var command = aCommandWithDates(LocalDate.parse(conflictingInitDate), END_DATE);
 
     assertThatThrownBy(() -> useCase.execute(command))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(NonSequentialPriceDateException.class)
         .hasMessage(ERROR_INIT_NOT_AFTER_LAST_END);
   }
 
@@ -175,7 +183,7 @@ class AddPriceToProductUseCaseShould {
     var command = aCommandWithPriceId(INVALID_UUID);
 
     assertThatThrownBy(() -> useCase.execute(command))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(InvalidUuidV7Exception.class)
         .hasMessage(ERROR_UUID_V7);
 
     verifyNoInteractions(priceRepository);
@@ -188,7 +196,7 @@ class AddPriceToProductUseCaseShould {
     var command = aCommandWithPriceId(invalidId);
 
     assertThatThrownBy(() -> useCase.execute(command))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(BlankIdException.class)
         .hasMessage(ERROR_ID_BLANK);
 
     verifyNoInteractions(priceRepository);
@@ -199,7 +207,7 @@ class AddPriceToProductUseCaseShould {
     var command = aCommandWithProductId(INVALID_UUID);
 
     assertThatThrownBy(() -> useCase.execute(command))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(InvalidUuidV7Exception.class)
         .hasMessage(ERROR_UUID_V7);
 
     verifyNoInteractions(priceRepository);
@@ -212,7 +220,7 @@ class AddPriceToProductUseCaseShould {
     var command = aCommandWithProductId(invalidId);
 
     assertThatThrownBy(() -> useCase.execute(command))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(BlankIdException.class)
         .hasMessage(ERROR_ID_BLANK);
 
     verifyNoInteractions(priceRepository);
@@ -223,7 +231,7 @@ class AddPriceToProductUseCaseShould {
     var command = aCommandWithAmount(null);
 
     assertThatThrownBy(() -> useCase.execute(command))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(AmountMustBePositiveException.class)
         .hasMessage(ERROR_AMOUNT_POSITIVE);
 
     verifyNoInteractions(priceRepository);
@@ -235,7 +243,7 @@ class AddPriceToProductUseCaseShould {
     var command = aCommandWithAmount(new BigDecimal(invalidAmount));
 
     assertThatThrownBy(() -> useCase.execute(command))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(AmountMustBePositiveException.class)
         .hasMessage(ERROR_AMOUNT_POSITIVE);
 
     verifyNoInteractions(priceRepository);
@@ -247,7 +255,7 @@ class AddPriceToProductUseCaseShould {
     var command = aCommandWithCurrency(invalidCurrency);
 
     assertThatThrownBy(() -> useCase.execute(command))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(InvalidCurrencyCodeException.class)
         .hasMessage(ERROR_CURRENCY_ISO);
 
     verifyNoInteractions(priceRepository);
@@ -258,7 +266,7 @@ class AddPriceToProductUseCaseShould {
     var command = aCommandWithDates(null, END_DATE);
 
     assertThatThrownBy(() -> useCase.execute(command))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(NullInitDateException.class)
         .hasMessage(ERROR_INIT_DATE_NULL);
 
     verifyNoInteractions(priceRepository);
@@ -269,7 +277,7 @@ class AddPriceToProductUseCaseShould {
     var command = aCommandWithDates(END_DATE, INIT_DATE);
 
     assertThatThrownBy(() -> useCase.execute(command))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(InitDateNotBeforeEndDateException.class)
         .hasMessage(ERROR_INIT_DATE_BEFORE_END);
 
     verifyNoInteractions(priceRepository);
@@ -280,7 +288,7 @@ class AddPriceToProductUseCaseShould {
     var command = aCommandWithDates(END_DATE, END_DATE);
 
     assertThatThrownBy(() -> useCase.execute(command))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(InitDateNotBeforeEndDateException.class)
         .hasMessage(ERROR_INIT_DATE_BEFORE_END);
 
     verifyNoInteractions(priceRepository);

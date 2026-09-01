@@ -1,5 +1,9 @@
 package com.mango.products.domain;
 
+import com.mango.products.domain.DomainException.BlankDateException;
+import com.mango.products.domain.DomainException.InitDateNotBeforeEndDateException;
+import com.mango.products.domain.DomainException.InvalidDateFormatException;
+import com.mango.products.domain.DomainException.NullInitDateException;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 
@@ -7,31 +11,25 @@ public record ValidityPeriod(LocalDate initDate, LocalDate endDate) {
 
   public ValidityPeriod {
     if (initDate == null) {
-      throw new IllegalArgumentException("Init date must not be null");
+      throw new NullInitDateException();
     }
     if (endDate != null && !initDate.isBefore(endDate)) {
-      throw new IllegalArgumentException("Init date must be before end date");
+      throw new InitDateNotBeforeEndDateException();
     }
   }
 
   public static LocalDate parseDate(String rawDate) {
     if (rawDate == null || rawDate.isBlank()) {
-      throw new IllegalArgumentException("Date must not be blank");
+      throw new BlankDateException();
     }
     try {
       return LocalDate.parse(rawDate.trim());
     } catch (DateTimeParseException ex) {
-      throw new IllegalArgumentException("Date must be in ISO-8601 format (YYYY-MM-DD)");
+      throw new InvalidDateFormatException();
     }
   }
 
-  public static ValidityPeriod from(String rawInitDate, String rawEndDate) {
-    LocalDate init = parseDate(rawInitDate);
-    LocalDate end = (rawEndDate != null && !rawEndDate.isBlank()) ? parseDate(rawEndDate) : null;
-    return new ValidityPeriod(init, end);
-  }
-
-  public boolean contains(LocalDate date) {
+  public boolean isActive(LocalDate date) {
     if (date == null) {
       return false;
     }

@@ -1,4 +1,4 @@
-package com.mango.products.infrastructure.repository;
+package com.mango.products.infrastructure.repository.readmode;
 
 public enum SortOrder {
   ASC,

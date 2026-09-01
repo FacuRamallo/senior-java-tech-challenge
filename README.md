@@ -21,7 +21,7 @@ For detailed architectural justifications and technical decisions, refer to:
 - [ADR-0003: Temporal Modeling & PostgreSQL Range Containment](docs/adr/0003-temporal-modeling-and-timezone-architecture.md)
 - [ADR-0004: Price Lifecycle Invariants & Historical Immutability](docs/adr/0004-price-lifecycle-and-historical-immutability.md)
 - [ADR-0005: Case-Insensitive Product Name Uniqueness & Domain Port Conflict Resolution](docs/adr/0005-unique-product-naming-and-conflict-resolution.md)
-- [ADR-0043: Multi-Currency Discrete Pricing & Money Value Object](docs/adr/ADR-0043-multi-currency-discrete-pricing.md)
+- [ADR-0043: Multi-Currency Discrete Pricing & Money Value Object](docs/adr/0006-multi-currency-discrete-pricing.md)
 - [k6 Load Testing & Resource Tracking Guide](docs/k6-performance-benchmark.md)
 - [Docker Architecture & Multi-Arch Guide](docs/docker-architecture.md)
 - [OpenAPI 3.1 Specification](docs/openapi.yaml)
@@ -178,7 +178,7 @@ curl -s http://localhost:8080/actuator/metrics/jvm.threads.live
 ## 🧪 Predefined Edge-Case Verification Suite
 
 After starting the application (`docker compose up db app -d`) and running `bash scripts/seed-data.sh`, the following pre-seeded products are available:
-- **Product 1** (`01952e42-7a57-7000-8000-000000000001` - *Zapatillas Running Pro*): 3 EUR prices, 2 USD prices.
+- **Product 1** (`01952e42-7a57-7000-8000-000000000001` - *Zapatillas Running Pro*): 48 EUR prices, 36 USD prices (enables multi-page pagination testing).
 - **Product 2** (`01952e42-7a57-7000-8000-000000000002` - *Camiseta DryFit*): Has an active open-ended price (`endDate: null`).
 - **Product 3** (`01952e42-7a57-7000-8000-000000000003` - *Mochila Senderismo*): Fresh product with zero prices.
 
@@ -302,13 +302,13 @@ curl -i -X PUT http://localhost:8080/products/01952e42-7a57-7000-8000-0000000000
 #### ✅ Happy Path: Fetch chronological history ordered newest first (DESC)
 ```bash
 curl -i "http://localhost:8080/products/01952e42-7a57-7000-8000-000000000001/prices?currency=EUR&pageSize=20&sortOrder=DESC"
-# Expected: 200 OK with envelope {"next": null, "previous": null, "prices": [...3 items sorted DESC by initDate...]}
+# Expected: 200 OK with envelope containing 20 items (sorted DESC by initDate), "next" URL with cursor to page 2, and "previous": null
 ```
 
 #### ✅ Happy Path: Fetch chronological history ordered oldest first (ASC)
 ```bash
 curl -i "http://localhost:8080/products/01952e42-7a57-7000-8000-000000000001/prices?currency=EUR&pageSize=20&sortOrder=ASC"
-# Expected: 200 OK with envelope {"next": null, "previous": null, "prices": [...3 items sorted ASC by initDate...]}
+# Expected: 200 OK with envelope containing 20 items (sorted ASC by initDate), "next" URL with cursor to page 2, and "previous": null
 ```
 
 #### ❌ Edge Case: Reject invalid Base64 pagination cursor

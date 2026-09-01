@@ -1,5 +1,7 @@
 package com.mango.products.domain;
 
+import com.mango.products.domain.DomainException.BlankIdException;
+import com.mango.products.domain.DomainException.InvalidUuidV7Exception;
 import java.util.UUID;
 
 public record Id(UUID value) {
@@ -17,7 +19,7 @@ public record Id(UUID value) {
 
   private static void validateNotBlank(String value) {
     if (value == null || value.isBlank()) {
-      throw new IllegalArgumentException("Id must not be blank");
+      throw new BlankIdException();
     }
   }
 
@@ -25,13 +27,13 @@ public record Id(UUID value) {
     try {
       return UUID.fromString(raw);
     } catch (Exception ex) {
-      throw new IllegalArgumentException("Id must be a valid UUIDv7");
+      throw new InvalidUuidV7Exception();
     }
   }
 
   private static void validateVersion(UUID value) {
     if (value == null || value.version() != UUID_VERSION_7) {
-      throw new IllegalArgumentException("Id must be a valid UUIDv7");
+      throw new InvalidUuidV7Exception();
     }
   }
 }

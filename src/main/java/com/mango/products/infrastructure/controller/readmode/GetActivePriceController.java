@@ -3,7 +3,7 @@ package com.mango.products.infrastructure.controller.readmode;
 import com.mango.products.domain.Currency;
 import com.mango.products.domain.Id;
 import com.mango.products.domain.ValidityPeriod;
-import com.mango.products.infrastructure.repository.ActivePriceReader;
+import com.mango.products.infrastructure.repository.readmode.ActivePriceReader;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

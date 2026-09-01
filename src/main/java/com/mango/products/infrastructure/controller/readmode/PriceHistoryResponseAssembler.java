@@ -1,12 +1,12 @@
 package com.mango.products.infrastructure.controller.readmode;
 
-import static com.mango.products.infrastructure.repository.CursorDirection.defaultCursorDirectionFor;
+import static com.mango.products.infrastructure.repository.readmode.CursorDirection.defaultCursorDirectionFor;
 
 import com.mango.products.domain.Currency;
 import com.mango.products.domain.Id;
 import com.mango.products.domain.Price;
-import com.mango.products.infrastructure.repository.CursorDirection;
-import com.mango.products.infrastructure.repository.SortOrder;
+import com.mango.products.infrastructure.repository.readmode.CursorDirection;
+import com.mango.products.infrastructure.repository.readmode.SortOrder;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.stereotype.Component;

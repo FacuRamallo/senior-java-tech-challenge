@@ -1,5 +1,7 @@
 package com.mango.products.domain;
 
+import com.mango.products.domain.DomainException.InvalidCurrencyCodeException;
+
 public record Currency(String value) {
 
   public static final String DEFAULT_CURRENCY_CODE = "EUR";
@@ -21,7 +23,7 @@ public record Currency(String value) {
     try {
       return java.util.Currency.getInstance(rawCurrency.trim().toUpperCase()).getCurrencyCode();
     } catch (Exception ex) {
-      throw new IllegalArgumentException("Currency must be a valid ISO-4217 code");
+      throw new InvalidCurrencyCodeException();
     }
   }
 

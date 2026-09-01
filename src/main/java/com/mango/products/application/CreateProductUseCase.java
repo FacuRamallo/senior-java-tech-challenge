@@ -1,7 +1,7 @@
 package com.mango.products.application;
 
 import com.mango.products.domain.Description;
-import com.mango.products.domain.DuplicateProductNameException;
+import com.mango.products.domain.DomainException.DuplicateProductNameException;
 import com.mango.products.domain.Id;
 import com.mango.products.domain.IdGenerator;
 import com.mango.products.domain.Name;
@@ -18,10 +18,7 @@ public class CreateProductUseCase {
   }
 
   public Product execute(CreateProductCommand command) {
-    var id =
-        (command.id() != null && !command.id().isBlank())
-            ? Id.fromString(command.id())
-            : idGenerator.nextIdentity();
+    var id = from(command);
     var name = new Name(command.name());
     var description = new Description(command.description());
     var product = Product.create(id, name, description);
@@ -32,5 +29,11 @@ public class CreateProductUseCase {
       throw new DuplicateProductNameException(conflictingId, name);
     }
     return product;
+  }
+
+  private Id from(CreateProductCommand command) {
+    return (command.id() != null && !command.id().isBlank())
+        ? Id.fromString(command.id())
+        : idGenerator.nextIdentity();
   }
 }

@@ -1,5 +1,7 @@
 package com.mango.products.domain;
 
+import com.mango.products.domain.DomainException.BlankDescriptionException;
+
 public record Description(String value) {
 
   public Description {
@@ -9,7 +11,7 @@ public record Description(String value) {
 
   private static void validate(String value) {
     if (value == null || value.isBlank()) {
-      throw new IllegalArgumentException("Description cannot be blank");
+      throw new BlankDescriptionException();
     }
   }
 }

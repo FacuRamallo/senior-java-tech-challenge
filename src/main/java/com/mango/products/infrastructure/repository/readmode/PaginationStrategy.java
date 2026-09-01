@@ -1,4 +1,4 @@
-package com.mango.products.infrastructure.repository;
+package com.mango.products.infrastructure.repository.readmode;
 
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 

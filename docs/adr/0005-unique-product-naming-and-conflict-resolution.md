@@ -34,7 +34,7 @@ We adopt a **Database-Enforced Functional Unique Index paired with Domain Port C
    - On duplicate violation caught from the repository, query `productRepository.findConflictingProductId(name)` and throw the enriched `DuplicateProductNameException(conflictingId, name)`.
 
 4. **Infrastructure Layer (HTTP ProblemDetail)**:
-   - In `ProductsExceptionHandler`, map `DuplicateProductNameException` to HTTP `409 Conflict` returning an RFC 9457 `ProblemDetail` with `title: "Duplicate Product Name"` and `conflictingProductId` property.
+   - In `ProductsApiExceptionHandler`, map `DuplicateProductNameException` to HTTP `409 Conflict` returning an RFC 9457 `ProblemDetail` with `title: "Duplicate Product Name"` and `conflictingProductId` property.
 
 ## Consequences
 

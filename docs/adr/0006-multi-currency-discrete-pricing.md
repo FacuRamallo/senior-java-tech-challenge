@@ -1,4 +1,4 @@
-# ADR-0043: Explicit Multi-Currency Price Lists (Discrete Pricing with Value Objects)
+# 6: Explicit Multi-Currency Price Lists (Discrete Pricing with Value Objects)
 
 Date: 2026-08-25
 

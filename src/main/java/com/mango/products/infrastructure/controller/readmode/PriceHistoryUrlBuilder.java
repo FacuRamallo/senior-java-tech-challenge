@@ -1,7 +1,7 @@
 package com.mango.products.infrastructure.controller.readmode;
 
-import com.mango.products.infrastructure.repository.CursorDirection;
-import com.mango.products.infrastructure.repository.SortOrder;
+import com.mango.products.infrastructure.repository.readmode.CursorDirection;
+import com.mango.products.infrastructure.repository.readmode.SortOrder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.Base64;

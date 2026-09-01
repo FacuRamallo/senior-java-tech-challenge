@@ -6,13 +6,18 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.mango.products.domain.Currency;
+import com.mango.products.domain.DomainException.BlankDateException;
+import com.mango.products.domain.DomainException.BlankIdException;
+import com.mango.products.domain.DomainException.InvalidCurrencyCodeException;
+import com.mango.products.domain.DomainException.InvalidDateFormatException;
+import com.mango.products.domain.DomainException.InvalidUuidV7Exception;
 import com.mango.products.domain.Id;
 import com.mango.products.domain.Money;
 import com.mango.products.domain.Price;
 import com.mango.products.domain.ValidityPeriod;
 import com.mango.products.infrastructure.controller.readmode.GetActivePriceController;
 import com.mango.products.infrastructure.controller.readmode.GetActivePriceResponse;
-import com.mango.products.infrastructure.repository.ActivePriceReader;
+import com.mango.products.infrastructure.repository.readmode.ActivePriceReader;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Optional;
@@ -95,7 +100,7 @@ class GetActivePriceControllerShould {
   @Test
   void failWhenProductIdIsNotUuidV7() {
     assertThatThrownBy(() -> controller.getActivePrice(INVALID_UUID, QUERY_DATE_STR, EUR))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(InvalidUuidV7Exception.class)
         .hasMessage(ERROR_UUID_V7);
 
     verifyNoInteractions(activePriceReader);
@@ -106,7 +111,7 @@ class GetActivePriceControllerShould {
   @ValueSource(strings = {"   "})
   void failWhenProductIdIsBlankOrNull(String invalidId) {
     assertThatThrownBy(() -> controller.getActivePrice(invalidId, QUERY_DATE_STR, EUR))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(BlankIdException.class)
         .hasMessage(ERROR_ID_BLANK);
 
     verifyNoInteractions(activePriceReader);
@@ -117,7 +122,7 @@ class GetActivePriceControllerShould {
   @ValueSource(strings = {"   "})
   void failWhenDateIsBlankOrNull(String invalidDate) {
     assertThatThrownBy(() -> controller.getActivePrice(PRODUCT_ID, invalidDate, EUR))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(BlankDateException.class)
         .hasMessage(ERROR_DATE_BLANK);
 
     verifyNoInteractions(activePriceReader);
@@ -127,7 +132,7 @@ class GetActivePriceControllerShould {
   @ValueSource(strings = {"invalid-date", "2024/04/15", "15-04-2024", "2024-13-01"})
   void failWhenDateFormatIsInvalid(String invalidDate) {
     assertThatThrownBy(() -> controller.getActivePrice(PRODUCT_ID, invalidDate, EUR))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(InvalidDateFormatException.class)
         .hasMessage(ERROR_DATE_FORMAT);
 
     verifyNoInteractions(activePriceReader);
@@ -137,7 +142,7 @@ class GetActivePriceControllerShould {
   @ValueSource(strings = {"INVALID", "US", "EURO", "123"})
   void failWhenCurrencyIsInvalid(String invalidCurrency) {
     assertThatThrownBy(() -> controller.getActivePrice(PRODUCT_ID, QUERY_DATE_STR, invalidCurrency))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(InvalidCurrencyCodeException.class)
         .hasMessage(ERROR_CURRENCY_ISO);
 
     verifyNoInteractions(activePriceReader);
