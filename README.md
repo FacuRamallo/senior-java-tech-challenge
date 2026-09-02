@@ -8,9 +8,9 @@ A production-grade, high-throughput Hexagonal API for Product Management and Dyn
 
 - **Language & Runtime**: Java 25 (Virtual Threads / Project Loom), GraalVM Native Image (SubstrateVM).
 - **Framework**: Spring Boot 4.1 (Native AOT compilation, Spring JDBC `NamedParameterJdbcTemplate`).
-- **Database & Integrity**: PostgreSQL 17/18 with `btree_gist` temporal composite exclusion constraints for zero-race-condition price intervals.
+- **Database & Integrity**: PostgreSQL 18 with `btree_gist` temporal composite exclusion constraints for zero-race-condition price intervals.
 - **Architecture**: Pure Hexagonal Architecture (Ports & Adapters) with dedicated Pragmatic CQRS Read-Mode query layer.
-- **Testing & Benchmarking**: Inside-Out TDD, MockMvc acceptance tests backed by Testcontainers PostgreSQL, whole-object unit tests, official `benchmark.sh` suite, and dedicated **k6** high-concurrency performance benchmark with resource tracking.
+- **Testing & Benchmarking**: MockMvc acceptance tests backed by Testcontainers PostgreSQL, official `benchmark.sh` suite, and dedicated **k6** high-concurrency performance benchmark with resource tracking.
 
 ### 📂 Architecture Decision Records (ADRs) & Documentation
 

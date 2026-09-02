@@ -2,7 +2,9 @@ package com.mango.products.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -16,6 +18,7 @@ import com.mango.products.domain.DomainException.InvalidUuidV7Exception;
 import com.mango.products.domain.DomainException.NonSequentialPriceDateException;
 import com.mango.products.domain.DomainException.NullInitDateException;
 import com.mango.products.domain.DomainException.OpenEndedPriceConflictException;
+import com.mango.products.domain.DomainException.PriceValidityOverlapException;
 import com.mango.products.domain.Id;
 import com.mango.products.domain.Money;
 import com.mango.products.domain.Price;
@@ -58,6 +61,8 @@ class AddPriceToProductUseCaseShould {
       "Cannot create a new price while the current price has an open-ended end date";
   private static final String ERROR_INIT_NOT_AFTER_LAST_END =
       "New price init date must be after the last price end date";
+  private static final String ERROR_PRICE_OVERLAP =
+      "Price validity period overlaps with an existing price for this product and currency";
 
   @Mock private PriceRepository priceRepository;
   @Captor private ArgumentCaptor<Price> priceCaptor;
@@ -67,6 +72,27 @@ class AddPriceToProductUseCaseShould {
   @BeforeEach
   void setUp() {
     useCase = new AddPriceToProductUseCase(priceRepository);
+  }
+
+  @Test
+  void addAndPersistOpenEndedPriceWhenNoPreviousPrice() {
+    var command = aCommandWithDates(INIT_DATE, null);
+    when(priceRepository.findLatestPrice(eq(Id.fromString(PRODUCT_ID)), eq(Currency.DEFAULT)))
+        .thenReturn(Optional.empty());
+
+    useCase.execute(command);
+
+    verify(priceRepository).save(priceCaptor.capture());
+    Price savedPrice = priceCaptor.getValue();
+
+    var expectedPrice =
+        Price.create(
+            Id.fromString(PRICE_ID),
+            Id.fromString(PRODUCT_ID),
+            new Money(AMOUNT, Currency.DEFAULT),
+            new ValidityPeriod(INIT_DATE, null));
+
+    assertThat(savedPrice).usingRecursiveComparison().isEqualTo(expectedPrice);
   }
 
   @Test
@@ -176,6 +202,18 @@ class AddPriceToProductUseCaseShould {
     assertThatThrownBy(() -> useCase.execute(command))
         .isInstanceOf(NonSequentialPriceDateException.class)
         .hasMessage(ERROR_INIT_NOT_AFTER_LAST_END);
+  }
+
+  @Test
+  void failWhenPriceValidityOverlapsWithExistingPriceForProductAndCurrency() {
+    var command = aCommandWithDates(INIT_DATE, END_DATE);
+    when(priceRepository.findLatestPrice(eq(Id.fromString(PRODUCT_ID)), eq(Currency.DEFAULT)))
+        .thenReturn(Optional.empty());
+    doThrow(new PriceValidityOverlapException()).when(priceRepository).save(any(Price.class));
+
+    assertThatThrownBy(() -> useCase.execute(command))
+        .isInstanceOf(PriceValidityOverlapException.class)
+        .hasMessage(ERROR_PRICE_OVERLAP);
   }
 
   @Test

@@ -42,7 +42,6 @@ We establish the following core architectural and domain assumptions regarding t
 ### Positive
 - **Guaranteed Audit Integrity**: Eliminates the risk of deleting or corrupting past price points used in completed transactions.
 - **Deterministic Temporal Sequencing**: Prevents overlapping validity windows and ensures unambiguous active price resolution.
-- **Lean Domain Surface**: Discarding unnecessary deletion ports simplifies domain interfaces and eliminates dead code.
 
 ### Negative / Trade-offs
 - **Correction Workflow**: Correcting an active price's end date requires explicit updates before new intervals can be scheduled.

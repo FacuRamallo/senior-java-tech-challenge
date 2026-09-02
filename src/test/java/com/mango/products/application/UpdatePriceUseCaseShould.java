@@ -130,10 +130,45 @@ class UpdatePriceUseCaseShould {
   }
 
   @Test
+  void updateAndCloseOpenEndedActivePrice() {
+    var openEndedPrice = anExistingPrice(EUR, ACTIVE_INIT_DATE, null);
+    when(priceRepository.findById(Id.fromString(PRICE_ID), Id.fromString(PRODUCT_ID)))
+        .thenReturn(Optional.of(openEndedPrice));
+
+    var command = aCommandWithDates(ACTIVE_INIT_DATE, NEW_END_DATE);
+    Optional<Price> updated = useCase.execute(command);
+
+    var expectedPrice =
+        Price.create(
+            Id.fromString(PRICE_ID),
+            Id.fromString(PRODUCT_ID),
+            new Money(AMOUNT, Currency.DEFAULT),
+            new ValidityPeriod(ACTIVE_INIT_DATE, NEW_END_DATE));
+
+    assertThat(updated).isPresent();
+    assertThat(updated.get()).usingRecursiveComparison().isEqualTo(expectedPrice);
+    verify(priceRepository).update(priceCaptor.capture());
+    assertThat(priceCaptor.getValue()).usingRecursiveComparison().isEqualTo(expectedPrice);
+  }
+
+  @Test
   void failWhenPriceIsNotCurrentlyActive() {
     var pastPrice = anExistingPrice(EUR, LocalDate.of(2023, 1, 1), LocalDate.of(2023, 12, 31));
     when(priceRepository.findById(Id.fromString(PRICE_ID), Id.fromString(PRODUCT_ID)))
         .thenReturn(Optional.of(pastPrice));
+
+    var command = aCommandWithCurrency(EUR);
+
+    assertThatThrownBy(() -> useCase.execute(command))
+        .isInstanceOf(InactivePriceUpdateException.class)
+        .hasMessage(ERROR_NOT_ACTIVE);
+  }
+
+  @Test
+  void failWhenPriceIsScheduledInTheFuture() {
+    var futurePrice = anExistingPrice(EUR, LocalDate.of(2024, 5, 1), LocalDate.of(2024, 12, 31));
+    when(priceRepository.findById(Id.fromString(PRICE_ID), Id.fromString(PRODUCT_ID)))
+        .thenReturn(Optional.of(futurePrice));
 
     var command = aCommandWithCurrency(EUR);
 

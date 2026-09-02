@@ -147,6 +147,22 @@ class CreateProductUseCaseShould {
     verify(productRepository).findConflictingProductId(new Name(NAME));
   }
 
+  @Test
+  void failWhenProductNameAlreadyExistsAndFallbackToGeneratedIdWhenConflictingIdNotFound() {
+    var command = new CreateProductCommand(PRODUCT_ID, NAME, DESCRIPTION);
+    doThrow(new DuplicateProductNameException(new Name(NAME)))
+        .when(productRepository)
+        .save(any(Product.class));
+    when(productRepository.findConflictingProductId(new Name(NAME))).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> useCase.execute(command))
+        .isInstanceOf(DuplicateProductNameException.class)
+        .usingRecursiveComparison()
+        .isEqualTo(new DuplicateProductNameException(Id.fromString(PRODUCT_ID), new Name(NAME)));
+
+    verify(productRepository).findConflictingProductId(new Name(NAME));
+  }
+
   private static CreateProductCommand aCommandWithId(String id) {
     return new CreateProductCommand(id, NAME, DESCRIPTION);
   }
