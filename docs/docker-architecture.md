@@ -28,7 +28,7 @@ The primary Dockerfile uses a **Multi-Stage GraalVM Native Image Build**:
 
 ### `docker-compose.yml` (Standard Runtime & Benchmark)
 Serves as the root compose configuration for evaluating and running the full system:
-* `db`: PostgreSQL 18 with built-in `pg_isready` health check.
+* `db`: PostgreSQL 18 with built-in `pg_isready` health check and ephemeral in-memory `tmpfs` storage ensuring clean recreation.
 * `app` (`product-api`): GraalVM Native Image Spring Boot service, starts once `db` is healthy.
 * `benchmark` (`product-benchmark`): Automated high-concurrency load testing container.
 
