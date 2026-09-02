@@ -137,51 +137,51 @@ paths:
             maximum: 100
             default: 20
           example: 20
-        responses:
-          '200':
-            description: Price resolution successful (single active price object if date query param provided, or paginated envelope of price history items).
-            content:
-              application/json:
-                schema:
-                  oneOf:
-                    - $ref: '#/components/schemas/GetActivePriceResponse'
-                    - $ref: '#/components/schemas/GetPriceHistoryResponse'
-                examples:
-                  activePrice:
-                    summary: Single active price response (when date param provided)
-                    value:
-                      value: 99.99
-                      currency: "EUR"
-                  priceHistory:
-                    summary: Paginated price history response envelope (when date param omitted)
-                    value:
-                      next: "/products/01952e42-7a57-7000-8000-000000000001/prices?currency=EUR&cursor=MjAyNC0wMS0wMQ&pageSize=20&sortOrder=DESC"
-                      previous: null
-                      prices:
-                        - id: "01952e42-7a57-7000-8000-000000000003"
-                          value: 149.99
-                          currency: "EUR"
-                          initDate: "2024-07-01"
-                          endDate: "2024-12-31"
-                        - id: "01952e42-7a57-7000-8000-000000000002"
-                          value: 99.99
-                          currency: "EUR"
-                          initDate: "2024-01-01"
-                          endDate: "2024-06-30"
-          '400':
-            description: Invalid product ID, date format, or ISO currency code.
-            content:
-              application/problem+json:
-                schema:
-                  $ref: '#/components/schemas/ProblemDetail'
-                example:
-                  type: "about:blank"
-                  title: "Invalid Request"
-                  status: 400
-                  detail: "Id must be a valid UUIDv7"
-                  instance: "/products/01952e42-7a57-7000-8000-000000000001/prices"
-          '404':
-            description: No active price found for the specified product, date, and currency.
+      responses:
+        '200':
+          description: Price resolution successful (single active price object if date query param provided, or paginated envelope of price history items).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/GetActivePriceResponse'
+                  - $ref: '#/components/schemas/GetPriceHistoryResponse'
+              examples:
+                activePrice:
+                  summary: Single active price response (when date param provided)
+                  value:
+                    value: 99.99
+                    currency: "EUR"
+                priceHistory:
+                  summary: Paginated price history response envelope (when date param omitted)
+                  value:
+                    next: "/products/01952e42-7a57-7000-8000-000000000001/prices?currency=EUR&cursor=MjAyNC0wMS0wMQ&pageSize=20&sortOrder=DESC"
+                    previous: null
+                    prices:
+                      - id: "01952e42-7a57-7000-8000-000000000003"
+                        value: 149.99
+                        currency: "EUR"
+                        initDate: "2024-07-01"
+                        endDate: "2024-12-31"
+                      - id: "01952e42-7a57-7000-8000-000000000002"
+                        value: 99.99
+                        currency: "EUR"
+                        initDate: "2024-01-01"
+                        endDate: "2024-06-30"
+        '400':
+          description: Invalid product ID, date format, or ISO currency code.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+              example:
+                type: "about:blank"
+                title: "Invalid Request"
+                status: 400
+                detail: "Id must be a valid UUIDv7"
+                instance: "/products/01952e42-7a57-7000-8000-000000000001/prices"
+        '404':
+          description: No active price found for the specified product, date, and currency.
 
     post:
       summary: Add a price to a product

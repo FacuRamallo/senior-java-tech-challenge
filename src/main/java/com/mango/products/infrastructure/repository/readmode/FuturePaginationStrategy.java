@@ -3,7 +3,6 @@ package com.mango.products.infrastructure.repository.readmode;
 import java.sql.Date;
 import java.sql.Types;
 import java.time.LocalDate;
-
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 
 public class FuturePaginationStrategy implements PaginationStrategy {

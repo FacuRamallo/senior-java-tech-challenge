@@ -21,7 +21,7 @@ For detailed architectural justifications and technical decisions, refer to:
 - [ADR-0003: Temporal Modeling & PostgreSQL Range Containment](docs/adr/0003-temporal-modeling-and-timezone-architecture.md)
 - [ADR-0004: Price Lifecycle Invariants & Historical Immutability](docs/adr/0004-price-lifecycle-and-historical-immutability.md)
 - [ADR-0005: Case-Insensitive Product Name Uniqueness & Domain Port Conflict Resolution](docs/adr/0005-unique-product-naming-and-conflict-resolution.md)
-- [ADR-0043: Multi-Currency Discrete Pricing & Money Value Object](docs/adr/0006-multi-currency-discrete-pricing.md)
+- [ADR-0006: Multi-Currency Discrete Pricing & Money Value Object](docs/adr/0006-multi-currency-discrete-pricing.md)
 - [k6 Load Testing & Resource Tracking Guide](docs/k6-performance-benchmark.md)
 - [Docker Architecture & Multi-Arch Guide](docs/docker-architecture.md)
 - [OpenAPI 3.1 Specification](docs/openapi.yaml)
@@ -172,6 +172,30 @@ curl -s http://localhost:8080/actuator/metrics/jvm.threads.live
 # Automatically format code
 ./gradlew spotlessApply
 ```
+
+---
+
+## 📐 REST Design Decisions, Business Assumptions & Justifications
+
+Per the challenge guidelines (*"si consideras que alguno puede mejorarse para alinearse mejor con la semántica REST, puedes hacerlo libremente, justificándolo en el README de tu proyecto"*), the following architectural and domain decisions were implemented:
+
+### 1. Separation of Product Resource vs. Price Sub-Resource Collection (`GET /products/{id}/prices`)
+- **Challenge Sample Response**: The initial challenge outline embedded product master metadata (`name`, `description`) within the price list query response.
+- **REST & CQRS Improvement**: In RESTful resource modeling, `/products/{id}` represents the product entity, while `/products/{id}/prices` represents a temporal price collection sub-resource.
+- **Keyset Pagination Envelope**: To support high-throughput catalog workloads and prevent payload bloat, `GET /products/{id}/prices` returns a clean pagination envelope (`{"next": ..., "previous": ..., "prices": [...]}`). Product details can be retrieved independently via `GET /products/{id}`. This decouples catalog read-models from master entity persistence (Pragmatic CQRS).
+
+### 2. Price History Immutability & Financial Auditability ([ADR-0004](docs/adr/0004-price-lifecycle-and-historical-immutability.md))
+- **Sequential Append-Only Creation**: New prices must be registered sequentially (`initDate > latestPrice.endDate`). Adding a price is rejected if the current price is open-ended (`endDate: null`) until its validity window is closed.
+- **Active Price Updating (`PUT /products/{id}/prices/{priceId}`)**: Only the currently active price (`initDate <= today <= endDate`) can be updated.
+- **Zero Hard Deletions**: Hard deletion endpoints (`DELETE`) are intentionally discarded. Deleting historical price intervals destroys financial audit trails and breaks order billing reconciliation.
+
+### 3. Explicit Multi-Currency Discrete Pricing ([ADR-0006](docs/adr/0006-multi-currency-discrete-pricing.md))
+- Rather than multiplying base EUR prices by dynamic foreign exchange (FX) rates at query time, prices are stored discretely per `(product_id, price_currency)` using `NUMERIC(19, 2)` and ISO-4217 currency codes.
+- This preserves retail charm pricing (e.g., 99.99 EUR vs. 119.99 USD), guarantees zero floating-point rounding drift, and enables sub-millisecond database lookups without runtime FX table joins.
+
+### 4. Zero-Race Concurrency & Conflict Diagnostics ([ADR-0003](docs/adr/0003-temporal-modeling-and-timezone-architecture.md), [ADR-0005](docs/adr/0005-unique-product-naming-and-conflict-resolution.md))
+- **Price Interval Overlaps**: Enforced atomically at the database layer via PostgreSQL `btree_gist` composite exclusion constraints (`ex_product_currency_validity`), completely eliminating Time-of-Check to Time-of-Use (TOCTOU) race conditions under high concurrency.
+- **Product Name Uniqueness**: Enforced via case-insensitive functional index (`uk_product_name_lower`). When conflicts occur, the API returns RFC 9457 `409 Conflict` with the conflicting entity's UUID (`conflictingProductId`) for immediate client-side navigation.
 
 ---
 
